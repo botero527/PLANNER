@@ -15,7 +15,7 @@ from sqlalchemy import select
 
 import app.modelos  # noqa: F401
 from app.core.db import SesionLocal
-from app.core.seguridad import hashear_password
+from app.core.seguridad import guardar_password
 from app.modulos.tablero.model import Columna, Configuracion, Etiqueta
 from app.modulos.usuarios.model import Permiso, Rol, Usuario
 
@@ -117,7 +117,7 @@ def main() -> None:
             clave = clave_temporal()
             db.add(Usuario(usuario=usuario, nombre=nombre, rol_id=roles[rol].id, personaje=personaje,
                            correo=f"{usuario}@demo.agp.local",  # dominio falso a proposito
-                           password_hash=hashear_password(clave), debe_cambiar_password=True))
+                           password=guardar_password(clave), debe_cambiar_password=True))
             creados.append((usuario, clave))
 
         db.commit()

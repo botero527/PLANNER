@@ -16,7 +16,7 @@ from sqlalchemy import select
 
 import app.modelos  # noqa: F401
 from app.core.db import SesionLocal
-from app.core.seguridad import hashear_password
+from app.core.seguridad import guardar_password
 from app.main import app
 from app.modulos.notificaciones.model import CorreoCola
 from app.modulos.notificaciones.worker import procesar_lote
@@ -45,7 +45,7 @@ def usuarios():
         creados = {}
         for rol in ("comercial", "dibujante", "tecnico"):
             u = Usuario(usuario=f"{PREFIJO}{rol}", nombre=f"Test {rol.title()}", rol_id=roles[rol],
-                        correo=f"{PREFIJO}{rol}@demo.agp.local", password_hash=hashear_password(CLAVE),
+                        correo=f"{PREFIJO}{rol}@demo.agp.local", password=guardar_password(CLAVE),
                         debe_cambiar_password=False, personaje="vidrito")
             db.add(u)
             creados[rol] = u

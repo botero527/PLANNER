@@ -52,7 +52,7 @@ class Usuario(ConFechas, Base):
     correo: Mapped[str | None] = mapped_column(String(150))
     rol_id: Mapped[int] = mapped_column(ForeignKey("ROLES.id"))
     personaje: Mapped[str] = mapped_column(String(30), default="vidrito")
-    password_hash: Mapped[str] = mapped_column(String(100))
+    password: Mapped[str] = mapped_column(Unicode(100))  # texto plano, decision del equipo
     debe_cambiar_password: Mapped[bool] = mapped_column(Boolean, default=True)
     version_sesion: Mapped[int] = mapped_column(Integer, default=1)
     activo: Mapped[bool] = mapped_column(Boolean, default=True)

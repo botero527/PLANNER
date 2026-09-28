@@ -8,7 +8,7 @@ Tablero tipo Microsoft Planner hecho a la medida de AGP: el **comercial** crea e
 
 | | |
 |---|---|
-| **Login propio** | Usuario y contraseña (hash bcrypt), la primera vez obliga a cambiarla, bloqueo tras 5 intentos fallidos |
+| **Login propio** | Usuario y contraseña (guardada en texto plano, decisión del equipo), la primera vez obliga a cambiarla, bloqueo tras 5 intentos fallidos |
 | **4 roles con permisos en BD** | admin, comercial, dibujante, técnico; qué puede cada uno vive en `PLN.ROLES_PERMISOS` |
 | **Formulario del comercial** | Vehículo, modelo, año, VIN validado, cliente, piezas, prioridad, fecha y archivos, con vista previa en vivo |
 | **Tablero kanban** | Arrastrar tarjetas, filtros, límite por columna (WIP), portada con la primera imagen |

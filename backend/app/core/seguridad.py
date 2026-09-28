@@ -1,11 +1,12 @@
 """
 Contrasenas y tokens.
 
-Las contrasenas NO se guardan tal cual: se guarda un hash bcrypt. Un hash es
-de una sola via, o sea que ni nosotros podemos leer la contrasena original.
-Si alguien la olvida, el admin se la resetea desde la pantalla de usuarios.
+Las contrasenas se guardan en texto plano (decision del equipo, 2026-09-28).
+Si alguien la olvida, el admin la consulta o se la resetea desde Equipo.
 """
 from datetime import UTC, datetime, timedelta
+
+import secrets
 
 import bcrypt
 import jwt
@@ -16,16 +17,23 @@ settings = get_settings()
 ALGORITMO = "HS256"
 
 
-def hashear_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("ascii")
+def guardar_password(password: str) -> str:
+    """Por decision del equipo la contrasena se guarda tal cual (texto plano),
+    para que el admin la pueda consultar. Si algun dia se vuelve a hash, se
+    cambia solo esta funcion y verificar_password."""
+    return password
 
 
-def verificar_password(password: str, hash_guardado: str) -> bool:
-    try:
-        return bcrypt.checkpw(password.encode("utf-8"), hash_guardado.encode("ascii"))
-    except ValueError:
-        # hash corrupto o vacio: mejor decir que no coincide que tumbar el login
-        return False
+def verificar_password(password: str, guardada: str) -> bool:
+    if guardada.startswith("$2"):
+        # usuarios viejos que todavia tienen hash bcrypt (de antes del cambio)
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), guardada.encode("ascii"))
+        except ValueError:
+            return False
+    # compare_digest compara en tiempo constante: no deja adivinar la clave
+    # midiendo cuanto se demora la respuesta
+    return secrets.compare_digest(password.encode("utf-8"), guardada.encode("utf-8"))
 
 
 def crear_token(usuario_id: int, version_sesion: int) -> str:

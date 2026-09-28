@@ -41,7 +41,7 @@
 
 **Fechas en UTC.** La base guarda UTC; la API las manda con `Z` (`FechaUTC`) y el navegador las muestra en hora Colombia.
 
-**Contraseñas con bcrypt.** Nunca en texto plano: ni el admin ni la base pueden leerlas. Si alguien la olvida, el admin genera una temporal y el sistema obliga a cambiarla al entrar.
+**Contraseñas en texto plano (decisión del equipo).** Se guardan tal cual en `PLN.USUARIOS.password` para que el admin las pueda consultar. Riesgo aceptado: quien lea esa tabla ve todas las claves. Volver a hash es cambiar `guardar_password` y `verificar_password` en `core/seguridad.py` (el login ya acepta hashes bcrypt viejos).
 
 **Pocas consultas por petición.** Desde un PC en Colombia cada consulta a Azure cuesta 100–300 ms, así que se evita el problema N+1: permisos con JOIN en una consulta, conteos del tablero en una sola consulta agrupada, `selectin` para las relaciones. En producción (backend en Azure junto a la base) la latencia es ~1 ms.
 

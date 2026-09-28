@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.deps import get_usuario_actual
-from app.core.seguridad import crear_token, hashear_password, verificar_password
+from app.core.seguridad import crear_token, guardar_password, verificar_password
 from app.modulos.usuarios.model import Usuario
 from app.modulos.usuarios.schemas import YoOut
 
@@ -71,7 +71,7 @@ def login(datos: LoginIn, db: Session = Depends(get_db)):
     usuario = db.scalar(select(Usuario).where(Usuario.usuario == nombre))
     # Mismo mensaje si no existe o si la clave esta mal: asi nadie puede
     # adivinar que usuarios existen probando nombres.
-    if not usuario or not usuario.activo or not verificar_password(datos.password, usuario.password_hash):
+    if not usuario or not usuario.activo or not verificar_password(datos.password, usuario.password):
         _registrar_fallo(nombre)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuario o contraseña incorrectos")
 
@@ -91,12 +91,12 @@ def cambiar_password(
     usuario: Usuario = Depends(get_usuario_actual),
     db: Session = Depends(get_db),
 ):
-    if not verificar_password(datos.actual, usuario.password_hash):
+    if not verificar_password(datos.actual, usuario.password):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "La contraseña actual no es correcta")
     if datos.actual == datos.nueva:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "La nueva tiene que ser distinta a la actual")
 
-    usuario.password_hash = hashear_password(datos.nueva)
+    usuario.password = guardar_password(datos.nueva)
     usuario.debe_cambiar_password = False
     usuario.version_sesion += 1  # cierra las sesiones abiertas en otros equipos
     db.commit()

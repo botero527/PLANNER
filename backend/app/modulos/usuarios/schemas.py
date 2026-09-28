@@ -1,7 +1,7 @@
 """
 Schemas = la forma de los datos que entran y salen de la API.
 El modelo es la tabla; el schema es lo que el frontend ve. Por eso el
-password_hash existe en el modelo pero jamas en un schema de salida.
+la password existe en el modelo pero no sale en los schemas generales.
 """
 from datetime import datetime
 

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import get_usuario_actual, requiere
-from app.core.seguridad import hashear_password
+from app.core.seguridad import guardar_password
 from app.modulos.usuarios.model import Rol, Usuario
 from app.modulos.usuarios.schemas import (
     ResetPassword, RolOut, UsuarioCrear, UsuarioEditar, UsuarioMini, UsuarioOut,
@@ -38,7 +38,7 @@ def crear(datos: UsuarioCrear, _: Usuario = Depends(requiere("usuario.administra
 
     nuevo = Usuario(
         **datos.model_dump(exclude={"password_temporal"}),
-        password_hash=hashear_password(datos.password_temporal),
+        password=guardar_password(datos.password_temporal),
         debe_cambiar_password=True,
     )
     db.add(nuevo)
@@ -84,7 +84,7 @@ def reset_password(
     usuario = db.get(Usuario, usuario_id)
     if not usuario:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Usuario no encontrado")
-    usuario.password_hash = hashear_password(datos.password_temporal)
+    usuario.password = guardar_password(datos.password_temporal)
     usuario.debe_cambiar_password = True
     usuario.version_sesion += 1
     db.commit()
