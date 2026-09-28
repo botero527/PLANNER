@@ -1,0 +1,159 @@
+.admin { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding-bottom: 30px; }
+
+.equipo__roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.equipo__rol {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 14px 18px;
+  border-radius: var(--radio-l);
+  box-shadow: none;
+  border-left: 4px solid var(--c);
+}
+.equipo__rol strong { font-size: 26px; }
+.equipo__rol span { color: var(--texto-2); }
+
+.equipo__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.equipo__persona { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-radius: var(--radio-l); box-shadow: none; }
+.equipo__persona.inactivo { opacity: 0.55; }
+.equipo__info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.equipo__info strong { display: flex; align-items: center; gap: 8px; }
+.equipo__info span { font-size: 13px; color: var(--texto-3); }
+.equipo__chip-rol { background: transparent; }
+.equipo__estado { width: 170px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.equipo__acciones { display: flex; gap: 2px; }
+
+.admin__modal { display: flex; flex-direction: column; gap: 16px; padding: 26px; overflow-y: auto; }
+.admin__modal h2 { margin: 0; font-size: 22px; }
+
+.admin__personajes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.admin__personajes button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--borde);
+  background: var(--campo);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-2);
+  transition: all var(--rapido);
+}
+.admin__personajes button:hover { border-color: var(--borde-fuerte); }
+.admin__personajes button.activo {
+  color: var(--texto);
+  border-color: var(--primario);
+  background: color-mix(in srgb, var(--primario) 16%, transparent);
+  box-shadow: 0 8px 24px -12px var(--primario);
+}
+
+.admin__interruptor { display: flex; align-items: center; gap: 12px; cursor: pointer; font-weight: 600; }
+.admin__interruptor input { display: none; }
+.admin__interruptor span {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--borde-fuerte);
+  transition: background var(--rapido);
+}
+.admin__interruptor span::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform var(--normal) var(--rebote);
+}
+.admin__interruptor input:checked + span { background: var(--exito); }
+.admin__interruptor input:checked + span::after { transform: translateX(18px); }
+
+.admin__clave { align-items: center; text-align: center; }
+.admin__clave p { margin: -6px 0 0; }
+.admin__clave-valor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 22px;
+  border-radius: 14px;
+  border: 1px dashed var(--primario);
+  background: color-mix(in srgb, var(--primario) 10%, transparent);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+
+.admin__seccion { display: flex; flex-direction: column; gap: 16px; padding: 22px 24px; border-radius: var(--radio-xl); box-shadow: none; }
+.admin__seccion h2 { margin: 0; font-size: 18px; }
+.admin__seccion p { margin: 2px 0 0; font-size: 13px; }
+
+.config__columnas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.config__columna {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--campo);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--c);
+}
+.config__orden { display: flex; flex-direction: column; }
+.config__orden .btn { height: 22px; width: 26px; }
+.config__color { width: 38px; height: 38px; padding: 0; border: none; border-radius: 10px; background: none; cursor: pointer; }
+.config__textos { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+.config__textos .entrada, .config__icono, .config__limite { height: 38px; }
+.config__icono { width: 110px; }
+.config__limite { width: 110px; }
+.config__final { cursor: pointer; height: 30px; }
+.config__final.activo { color: var(--exito); border-color: var(--exito); background: color-mix(in srgb, var(--exito) 14%, transparent); }
+
+.config__eventos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.config__evento {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--borde);
+  background: var(--campo);
+  cursor: pointer;
+  font-weight: 500;
+}
+.config__evento.activo { border-color: color-mix(in srgb, var(--primario) 55%, transparent); background: color-mix(in srgb, var(--primario) 10%, transparent); }
+.config__evento input { display: none; }
+.admin__interruptor-mini {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--borde-fuerte);
+  transition: background var(--rapido);
+}
+.admin__interruptor-mini::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform var(--normal) var(--rebote);
+}
+.config__evento.activo .admin__interruptor-mini { background: var(--primario); }
+.config__evento.activo .admin__interruptor-mini::after { transform: translateX(14px); }
+
+@media (max-width: 860px) {
+  .equipo__persona { flex-wrap: wrap; }
+  .equipo__estado { width: auto; align-items: flex-start; }
+  .config__columna { flex-wrap: wrap; }
+  .config__textos { grid-template-columns: 1fr; min-width: 200px; }
+  .admin__personajes { grid-template-columns: repeat(3, 1fr); }
+}

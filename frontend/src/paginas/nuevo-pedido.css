@@ -1,0 +1,186 @@
+.nuevo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 22px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-bottom: 30px;
+}
+
+.nuevo__formulario { display: flex; flex-direction: column; gap: 16px; }
+
+.nuevo__bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px;
+  border-radius: var(--radio-xl);
+  box-shadow: none;
+  transition: border-color var(--normal);
+}
+.nuevo__bloque.completo { border-color: color-mix(in srgb, var(--exito) 40%, transparent); }
+.nuevo__bloque header { display: flex; align-items: center; gap: 10px; }
+.nuevo__bloque h2 { margin: 0; font-size: 18px; flex: 1; }
+.nuevo__numero {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--texto-2);
+  border: 2px solid var(--borde-fuerte);
+  transition: all var(--normal) var(--rebote);
+}
+.nuevo__bloque.completo .nuevo__numero { color: #fff; border-color: var(--exito); background: var(--exito); transform: scale(1.06); }
+.nuevo__icono { color: var(--texto-3); display: grid; }
+
+.nuevo__rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.nuevo__ancho { grid-column: 1 / -1; }
+.entrada--grande { height: 52px; font-size: 18px; font-weight: 600; }
+
+.nuevo__vin { position: relative; }
+.nuevo__vin .entrada { padding-right: 64px; font-size: 16px; }
+.nuevo__vin-cuenta {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--texto-3);
+}
+.nuevo__vin.ok .entrada { border-color: var(--exito); }
+.nuevo__vin.ok .nuevo__vin-cuenta { color: var(--exito); }
+.nuevo__vin.mal .nuevo__vin-cuenta { color: var(--peligro); }
+
+.nuevo__vin-cajas { display: grid; grid-template-columns: repeat(17, 1fr); gap: 3px; }
+.nuevo__vin-cajas span {
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  font-family: var(--fuente-mono);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--campo);
+  border: 1px solid var(--borde);
+  transition: all var(--rapido) var(--rebote);
+}
+.nuevo__vin-cajas span.lleno {
+  color: var(--primario);
+  border-color: color-mix(in srgb, var(--primario) 50%, transparent);
+  background: color-mix(in srgb, var(--primario) 12%, transparent);
+  transform: translateY(-1px);
+}
+/* separamos visualmente las 3 partes del VIN: fabricante (3), descripcion (6), serie (8) */
+.nuevo__vin-cajas span:nth-child(3), .nuevo__vin-cajas span:nth-child(9) { margin-right: 6px; }
+
+.nuevo__archivos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+}
+.nuevo__archivos li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--campo);
+  border: 1px solid var(--borde);
+}
+.nuevo__archivos img, .nuevo__archivo-icono {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 9px;
+  object-fit: cover;
+}
+.nuevo__archivo-icono { display: grid; place-items: center; color: var(--primario); background: color-mix(in srgb, var(--primario) 14%, transparent); }
+.nuevo__archivos div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.nuevo__archivos strong { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nuevo__archivos span { font-size: 12px; color: var(--texto-3); }
+.nuevo__archivos button { display: grid; place-items: center; width: 26px; height: 26px; border: none; border-radius: 8px; background: none; color: var(--texto-3); }
+.nuevo__archivos button:hover { background: var(--vidrio-hover); color: var(--peligro); }
+
+.nuevo__enviar { display: flex; justify-content: flex-end; }
+.nuevo__enviar .btn { min-width: 220px; }
+
+.nuevo__lateral {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.nuevo__guia { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.nuevo__globo {
+  position: relative;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  border-radius: 18px;
+  background: var(--vidrio-fuerte);
+}
+.nuevo__globo::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 16px;
+  height: 16px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--vidrio-fuerte);
+  border-right: 1px solid var(--borde);
+  border-bottom: 1px solid var(--borde);
+}
+
+.nuevo__pasos { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.nuevo__pasos li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--texto-3); }
+.nuevo__pasos li::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--borde-fuerte);
+  transition: all var(--normal) var(--rebote);
+}
+.nuevo__pasos li.ok { color: var(--texto); }
+.nuevo__pasos li.ok::before {
+  border-color: var(--exito);
+  background: var(--exito) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E") center / 12px no-repeat;
+}
+
+.nuevo__exito {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 30px 16px;
+}
+.nuevo__exito-texto { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.nuevo__exito-texto p { margin: 0; font-size: 17px; color: var(--texto-2); }
+.nuevo__exito-botones { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
+
+@media (max-width: 1000px) {
+  .nuevo { grid-template-columns: 1fr; }
+  .nuevo__lateral { position: static; order: -1; }
+  .nuevo__lateral > :not(.nuevo__guia) { display: none; }
+  .nuevo__guia { flex-direction: row-reverse; justify-content: center; }
+  .nuevo__globo::after { display: none; }
+}
+@media (max-width: 640px) {
+  .nuevo__rejilla { grid-template-columns: 1fr; }
+  .nuevo__bloque { padding: 18px 16px; }
+  .nuevo__vin-cajas { display: none; }
+}

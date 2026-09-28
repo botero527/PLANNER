@@ -1,0 +1,85 @@
+/* Piezas de interfaz que usan varias pantallas (formulario, detalle, admin). */
+.rejilla-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+.detalles__etiquetas { display: flex; flex-wrap: wrap; gap: 6px; }
+.detalles__etiquetas .chip { cursor: pointer; }
+
+.selector-prioridad {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--campo);
+  border: 1px solid var(--borde);
+}
+.selector-prioridad button {
+  flex: 1;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  font-weight: 600;
+  color: var(--texto-2);
+  transition: all var(--rapido);
+}
+.selector-prioridad button:hover { color: var(--texto); }
+.selector-prioridad button.activa {
+  color: #fff;
+  background: var(--p);
+  box-shadow: 0 6px 18px -6px var(--p);
+}
+
+.archivos__zona {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 26px;
+  border: 2px dashed var(--borde-fuerte);
+  border-radius: var(--radio-l);
+  color: var(--texto-2);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--normal);
+}
+.archivos__zona span:last-child { font-size: 13px; color: var(--texto-3); }
+.archivos__zona svg { color: var(--primario); }
+.archivos__zona:hover, .archivos__zona.encima {
+  border-color: var(--primario);
+  background: color-mix(in srgb, var(--primario) 10%, transparent);
+}
+.archivos__zona.subiendo { opacity: 0.7; pointer-events: none; animation: brillo 1.4s infinite; }
+
+/* buscador con icono (tablero, mis pedidos, equipo) */
+.tablero__buscar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  width: min(320px, 100%);
+  padding: 0 12px;
+  border-radius: 12px;
+  background: var(--campo);
+  border: 1px solid var(--borde);
+  color: var(--texto-3);
+  transition: border-color var(--rapido), box-shadow var(--rapido);
+}
+.tablero__buscar:focus-within {
+  border-color: var(--primario);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primario) 16%, transparent);
+}
+.tablero__buscar input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+}
+.tablero__buscar button {
+  display: grid;
+  place-items: center;
+  border: none;
+  background: none;
+  color: var(--texto-3);
+}
+

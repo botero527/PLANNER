@@ -1,0 +1,53 @@
+.avatar {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  border-radius: 50%;
+}
+
+.avatar__circulo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.avatar__cara {
+  position: absolute;
+  pointer-events: none;
+}
+
+.avatar--anillo {
+  box-shadow: 0 0 0 2px var(--fondo);
+}
+
+.avatar__punto {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 30%;
+  height: 30%;
+  min-width: 8px;
+  min-height: 8px;
+  border-radius: 50%;
+  background: var(--exito);
+  box-shadow: 0 0 0 2px var(--fondo);
+}
+
+.pila-avatares {
+  display: inline-flex;
+  align-items: center;
+}
+.pila-avatares > * + * {
+  margin-left: -8px;
+}
+.pila-avatares__mas {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--vidrio-fuerte);
+  border: 1px solid var(--borde);
+  box-shadow: 0 0 0 2px var(--fondo);
+}

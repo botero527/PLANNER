@@ -1,0 +1,27 @@
+# secretos: nunca a git
+.env
+*.env.local
+credenciales_demo.txt
+# notas personales del proyecto (tienen credenciales)
+planificacion
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# correos de prueba del modo simulado
+correos_simulados/
+
+# frontend
+node_modules/
+dist/
+*.tsbuildinfo
+
+# editor / sistema
+.vscode/*
+!.vscode/extensions.json
+.idea/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,198 @@
+.shell {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  height: 100dvh;
+  gap: 14px;
+  padding: 14px;
+}
+
+.shell__menu {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px 14px;
+  border-radius: var(--radio-xl);
+  min-height: 0;
+}
+
+.shell__marca {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 10px 22px;
+}
+.shell__logo {
+  font-weight: 800;
+  letter-spacing: 2px;
+  font-size: 16px;
+  padding: 3px 9px;
+  border-radius: 9px;
+  background: var(--prisma);
+  color: #0a0f22;
+}
+.shell__producto {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--texto-2);
+}
+
+.shell__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shell__enlace {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 13px;
+  color: var(--texto-2);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--rapido), background var(--rapido);
+}
+.shell__enlace:hover { color: var(--texto); background: var(--vidrio); }
+.shell__enlace.activo { color: var(--texto); }
+.shell__enlace > svg,
+.shell__enlace > span:not(.shell__enlace-fondo) { position: relative; z-index: 1; }
+.shell__enlace-fondo {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primario) 26%, transparent), color-mix(in srgb, #b06bff 16%, transparent));
+  border: 1px solid color-mix(in srgb, var(--primario) 35%, transparent);
+}
+
+.shell__mascota {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 8px 10px;
+  text-align: center;
+}
+.shell__mascota p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--texto-3);
+}
+
+.shell__yo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  background: var(--vidrio);
+  border: 1px solid var(--borde);
+}
+.shell__yo-texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.shell__yo-texto strong {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shell__yo-texto span { font-size: 12px; font-weight: 600; }
+
+.shell__cuerpo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.shell__barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 6px 10px;
+}
+.shell__barra-izq { min-width: 0; flex: 1; }
+.shell__barra-der {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shell__en-linea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  background: var(--vidrio);
+  border: 1px solid var(--borde);
+  font-size: 13px;
+  color: var(--texto-2);
+}
+
+.shell__conexion {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--texto-3);
+  margin: 0 4px;
+}
+.shell__conexion.ok {
+  background: var(--exito);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--exito) 60%, transparent);
+  animation: latido 2.4s infinite;
+}
+@keyframes latido {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--exito) 55%, transparent); }
+  70% { box-shadow: 0 0 0 9px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.shell__contenido {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.shell__pagina {
+  height: 100%;
+  overflow: auto;
+  padding: 0 6px 6px;
+}
+
+/* Aviso en vivo (toast) */
+.aviso-vivo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 340px;
+  padding: 10px 16px 10px 10px;
+  background: var(--vidrio-fuerte);
+  box-shadow: var(--sombra-flotante);
+  color: var(--texto);
+  font-family: var(--fuente);
+}
+.aviso-vivo strong { font-size: 13px; }
+.aviso-vivo p { margin: 2px 0 0; font-size: 13px; color: var(--texto-2); }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; grid-template-rows: 1fr auto; padding: 10px; }
+  .shell__menu {
+    order: 2;
+    flex-direction: row;
+    padding: 6px;
+    border-radius: 20px;
+  }
+  .shell__marca, .shell__mascota, .shell__yo-texto { display: none; }
+  .shell__nav { flex-direction: row; flex: 1; justify-content: space-around; }
+  .shell__enlace { flex-direction: column; gap: 2px; height: 54px; padding: 6px 10px; font-size: 11px; }
+  .shell__yo { padding: 4px; background: none; border: none; }
+  .shell__en-linea > span:last-child { display: none; }
+}
