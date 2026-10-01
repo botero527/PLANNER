@@ -12,13 +12,14 @@ import time
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import delete, func, select, update
 
 import app.modelos  # noqa: F401
 from app.core.db import SesionLocal
 from app.core.seguridad import guardar_password
 from app.main import app
 from app.modulos.notificaciones.model import CorreoCola
+from app.modulos.pedidos.model import Pedido
 from app.modulos.notificaciones.worker import procesar_lote
 from app.modulos.tablero.model import Columna
 from app.modulos.usuarios.model import Rol, Usuario
@@ -45,7 +46,7 @@ def usuarios():
         creados = {}
         for rol in ("comercial", "dibujante", "tecnico"):
             u = Usuario(usuario=f"{PREFIJO}{rol}", nombre=f"Test {rol.title()}", rol_id=roles[rol],
-                        correo=f"{PREFIJO}{rol}@demo.agp.local", password=guardar_password(CLAVE),
+                        correo=f"{PREFIJO}{rol}@planner.invalid", password=guardar_password(CLAVE),
                         debe_cambiar_password=False, personaje="vidrito")
             db.add(u)
             creados[rol] = u
@@ -59,6 +60,14 @@ def usuarios():
 def cliente():
     with TestClient(app) as c:
         yield c
+
+
+def dar_por_aprobado(pid: int) -> None:
+    """Para los tests que prueban mover/alertas y no el ingreso: el pedido queda aprobado
+    sin pasar por codigo + numero (eso lo prueba test_ingreso_codigo_numero_y_aprobacion)."""
+    with SesionLocal() as db:
+        db.execute(update(Pedido).where(Pedido.id == pid).values(aprobado_en=func.sysutcdatetime()))
+        db.commit()
 
 
 def entrar(cliente, rol) -> dict:
@@ -101,6 +110,7 @@ def test_flujo_completo(cliente, usuarios):
                       (None, "Pieza rara a mano")]            # fuera del catalogo: texto libre
     assert pedido["creado_en"].endswith("Z")                  # fecha sale en UTC
     pid = pedido["id"]
+    dar_por_aprobado(pid)
 
     base = {"marca": "X", "modelo": "Y", "vin": "Z", "mercado": "USA", "piezas": [{"codigo": "000"}]}
     # obligatorios y validaciones nuevas
@@ -188,7 +198,7 @@ def test_flujo_completo(cliente, usuarios):
     procesar_lote(falso)
     with SesionLocal() as db:
         estados = set(db.scalars(select(CorreoCola.estado).where(CorreoCola.pedido_id == pid)))
-    assert estados == {"enviado"}
+    assert estados <= {"enviado", "descartado"} and estados  # nada se queda pendiente
 
     # 10. historial registra lo importante
     acciones = [h["accion"] for h in cliente.get(f"/api/pedidos/{pid}/historial", headers=com).json()]
@@ -205,6 +215,7 @@ def test_mover_muchas_veces_renumera_bien(cliente, usuarios):
     for i in range(3):
         r = cliente.post("/api/pedidos", headers=com, json={"marca": f"Orden {i}", "modelo": "m", "vin": "v", "mercado": "USA", "piezas": [{"codigo": "000"}]})
         ids.append(r.json()["id"])
+        dar_por_aprobado(ids[-1])
     for pid in ids:
         cliente.post(f"/api/pedidos/{pid}/mover", headers=dib, json={"columna_id": destino, "indice": 999})
     versiones = {p["id"]: p["version"] for p in cliente.get("/api/tablero", headers=dib).json()["pedidos"] if p["id"] in ids}
@@ -231,3 +242,120 @@ def _esperar_evento(ws, tipo: str, segundos: float = 5) -> dict:
         if evento.get("tipo") == tipo:
             return evento
     raise AssertionError(f"no llego el evento {tipo}")
+
+
+def test_cada_quien_recibe_sus_alertas(cliente, usuarios):
+    """Al comercial le llega cuando mueven su pedido, al dibujante cuando lo asignan,
+    y cada uno puede apagar por correo lo que no quiera (la campanita sigue llegando)."""
+    com, dib = entrar(cliente, "comercial"), entrar(cliente, "dibujante")
+    correo = {rol: f"{PREFIJO}{rol}@planner.invalid" for rol in ("comercial", "dibujante")}
+
+    def correos_de(pid, rol):
+        with SesionLocal() as db:
+            return {c.evento for c in db.scalars(select(CorreoCola).where(CorreoCola.pedido_id == pid, CorreoCola.para == correo[rol]))}
+
+    with SesionLocal() as db:
+        columnas = list(db.scalars(select(Columna).where(Columna.activa).order_by(Columna.orden)))
+
+    # el comercial arranca con lo del admin (sin personalizar)
+    mis = cliente.get("/api/auth/alertas", headers=com).json()
+    assert mis["personalizadas"] is False and "pedido.movido" in mis["activas"]
+
+    pid = cliente.post("/api/pedidos", headers=com, json={"marca": "Alertas", "modelo": "Test", "vin": "v", "mercado": "USA", "piezas": [{"codigo": "000"}]}).json()["id"]
+    dar_por_aprobado(pid)
+    cliente.put(f"/api/pedidos/{pid}/miembros", headers=dib, json={"asignados": [usuarios["dibujante"]]})
+    assert "pedido.asignado" not in correos_de(pid, "dibujante")  # se asigno el mismo: a uno no le llega lo que uno hizo
+
+    tec = entrar(cliente, "tecnico")
+    cliente.put(f"/api/pedidos/{pid}/miembros", headers=tec, json={"asignados": [usuarios["dibujante"]]})
+    cliente.put(f"/api/pedidos/{pid}/miembros", headers=tec, json={"asignados": []})
+    cliente.put(f"/api/pedidos/{pid}/miembros", headers=tec, json={"asignados": [usuarios["dibujante"]]})
+    assert "pedido.asignado" in correos_de(pid, "dibujante")  # lo asigno otra persona: le llega
+
+    cliente.post(f"/api/pedidos/{pid}/mover", headers=dib, json={"columna_id": columnas[1].id, "indice": 0})
+    assert "pedido.movido" in correos_de(pid, "comercial")  # al comercial le avisan que su pedido avanzo
+
+    # el comercial apaga "cambia de columna" por correo
+    r = cliente.put("/api/auth/alertas", headers=com, json={"recibir_correos": True, "activas": ["pedido.completado", "chat.mencion"]})
+    assert r.status_code == 200 and r.json()["personalizadas"] is True
+    with SesionLocal() as db:
+        db.execute(delete(CorreoCola).where(CorreoCola.pedido_id == pid))
+        db.commit()
+    cliente.post(f"/api/pedidos/{pid}/mover", headers=dib, json={"columna_id": columnas[2].id, "indice": 0})
+    assert "pedido.movido" not in correos_de(pid, "comercial")  # ya no le llega al correo...
+    bandeja = cliente.get("/api/notificaciones", headers=com).json()["items"]
+    assert sum(1 for n in bandeja if n["pedido_id"] == pid and n["tipo"] == "pedido.movido") == 2  # ...pero la campanita si
+
+    # avisos que no existen se rechazan
+    assert cliente.put("/api/auth/alertas", headers=com, json={"recibir_correos": True, "activas": ["inventado"]}).status_code == 400
+
+    # boton de prueba: mete un correo en la cola de verdad
+    r = cliente.post("/api/auth/alertas/prueba", headers=com)
+    assert r.status_code == 200 and r.json()["para"] == correo["comercial"]
+    with SesionLocal() as db:
+        assert db.scalar(select(CorreoCola).where(CorreoCola.para == correo["comercial"], CorreoCola.evento == "prueba"))
+
+    # dejamos al comercial como estaba (con las alertas del admin) para no afectar otros tests
+    with SesionLocal() as db:
+        db.execute(update(Usuario).where(Usuario.usuario == f"{PREFIJO}comercial").values(alertas_correo=None))
+        db.commit()
+
+
+def test_ingreso_codigo_numero_y_aprobacion(cliente, usuarios):
+    """Primera columna: tecnica crea el codigo (con evidencia) -> comercial pone el numero
+    de pedido -> tecnica aprueba y el pedido pasa solo a la segunda columna."""
+    com, dib, tec = (entrar(cliente, r) for r in ("comercial", "dibujante", "tecnico"))
+    png = (b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+           b"\x00\x00\x00\rIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe\xa7\x35\x81\x84\x00\x00\x00\x00IEND\xaeB`\x82")
+    with SesionLocal() as db:
+        columnas = list(db.scalars(select(Columna).where(Columna.activa).order_by(Columna.orden)))
+    pid = cliente.post("/api/pedidos", headers=com, json={"marca": "Ingreso", "modelo": "Flujo", "vin": "v", "mercado": "USA", "piezas": [{"codigo": "000"}]}).json()["id"]
+    base = f"/api/pedidos/{pid}/ingreso"
+
+    def eventos_cola(rol):
+        with SesionLocal() as db:
+            return {c.evento for c in db.scalars(select(CorreoCola).where(CorreoCola.pedido_id == pid, CorreoCola.para == f"{PREFIJO}{rol}@planner.invalid"))}
+
+    # sin aprobar no se puede sacar de la primera columna, ni arrastrando
+    assert cliente.post(f"/api/pedidos/{pid}/mover", headers=dib, json={"columna_id": columnas[1].id, "indice": 0}).status_code == 409
+    # el numero va despues del codigo
+    assert cliente.put(f"{base}/numero-pedido", headers=com, json={"numero": "4500123"}).status_code == 409
+
+    # 1. codigo de vehiculo: solo tecnica/admin, y con evidencia obligatoria
+    archivo = lambda: [("evidencia", ("codigo-creado.png", io.BytesIO(png), "image/png"))]  # noqa: E731
+    assert cliente.post(f"{base}/codigo-vehiculo", headers=dib, files=archivo()).status_code == 403
+    assert cliente.post(f"{base}/codigo-vehiculo", headers=tec, data={"codigo": "TOY-HLX-25"}).status_code == 422
+    r = cliente.post(f"{base}/codigo-vehiculo", headers=tec, files=archivo(), data={"codigo": "TOY-HLX-25"})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["codigo_vehiculo"] == "TOY-HLX-25" and d["codigo_vehiculo_por"]["usuario"] == f"{PREFIJO}tecnico"
+    assert len(d["evidencias"]) == 1 and d["evidencias"][0]["categoria"] == "evidencia_codigo"
+    assert "ingreso.codigo_creado" in eventos_cola("comercial")  # le avisan al comercial
+    assert cliente.post(f"{base}/codigo-vehiculo", headers=tec, files=archivo()).status_code == 409  # no dos veces
+
+    # mientras siga en Comercial, el comercial puede editar su pedido
+    version = cliente.get(f"/api/pedidos/{pid}", headers=com).json()["version"]
+    assert cliente.patch(f"/api/pedidos/{pid}", headers=com, json={"version": version, "descripcion": "ajuste"}).status_code == 200
+
+    # todavia sin numero: no se puede aprobar
+    assert cliente.post(f"{base}/aprobar", headers=tec).status_code == 409
+
+    # 2. numero de pedido: lo pone el comercial dueño (no otro)
+    assert cliente.put(f"{base}/numero-pedido", headers=dib, json={"numero": "999"}).status_code == 403
+    r = cliente.put(f"{base}/numero-pedido", headers=com, json={"numero": "  4500123 "})
+    assert r.status_code == 200 and r.json()["numero_pedido"] == "4500123"
+    assert "ingreso.pedido_ingresado" in eventos_cola("tecnico")  # le avisan a tecnica
+
+    # 3. aprobar: solo tecnica/admin, y pasa solo a la segunda columna
+    assert cliente.post(f"{base}/aprobar", headers=dib).status_code == 403
+    r = cliente.post(f"{base}/aprobar", headers=tec)
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["columna_id"] == columnas[1].id and d["aprobado_por"]["usuario"] == f"{PREFIJO}tecnico" and d["en_ingreso"] is False
+    eventos = eventos_cola("comercial")
+    assert "ingreso.aprobado" in eventos and "pedido.movido" not in eventos  # un solo correo, no dos
+
+    # ya en la segunda columna: el comercial no edita y el ingreso quedo cerrado
+    version = cliente.get(f"/api/pedidos/{pid}", headers=com).json()["version"]
+    assert cliente.patch(f"/api/pedidos/{pid}", headers=com, json={"version": version, "descripcion": "otro"}).status_code == 403
+    assert cliente.put(f"{base}/numero-pedido", headers=com, json={"numero": "1"}).status_code == 409

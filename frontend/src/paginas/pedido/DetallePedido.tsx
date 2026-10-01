@@ -153,7 +153,7 @@ function Contenido({ pedidoId, alCerrar, columnas, etiquetas }: Props & { pedido
       </header>
 
       <div className="detalle__cuerpo">
-        {pestana === 'detalles' && (isPlaceholderData ? <CargandoDetalles /> : <PestanaDetalles pedido={pedido} etiquetas={etiquetas} />)}
+        {pestana === 'detalles' && (isPlaceholderData ? <CargandoDetalles /> : <PestanaDetalles pedido={pedido} etiquetas={etiquetas} columnas={columnas} />)}
         {pestana === 'chat' && <PestanaChat pedido={pedido} />}
         {pestana === 'archivos' && <PestanaArchivos pedido={pedido} />}
         {pestana === 'historial' && <PestanaHistorial pedidoId={pedido.id} />}
@@ -168,6 +168,8 @@ function desdeTarjeta(t?: Tarjeta): PedidoDetalle | undefined {
   return {
     ...t, vin: '', plataforma: null, info_en_drive: null, descripcion: null,
     piezas: [], checklist: [], datos_extra: null, actualizado_en: t.creado_en, puedo_editar: false,
+    codigo_vehiculo: null, codigo_vehiculo_por: null, numero_pedido_en: null, numero_pedido_por: null,
+    aprobado_por: null, evidencias: [], en_ingreso: false, puedo_gestionar_ingreso: false, puedo_poner_pedido: false,
   }
 }
 

@@ -244,7 +244,7 @@ export function PestanaChat({ pedido }: { pedido: PedidoDetalle }) {
             {!editando && puede('adjunto.subir') && (
               <label className="btn btn-fantasma btn-icono" title="Adjuntar archivos">
                 <Paperclip size={18} />
-                <input type="file" multiple hidden onChange={(e) => { setArchivos((x) => [...x, ...Array.from(e.target.files ?? [])]); e.target.value = '' }} />
+                <input type="file" multiple hidden onChange={(e) => { const nuevos = Array.from(e.target.files ?? []); setArchivos((x) => [...x, ...nuevos]); e.target.value = '' }} />
               </label>
             )}
             <textarea

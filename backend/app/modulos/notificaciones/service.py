@@ -13,6 +13,7 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.eventos import anotar_evento
 from app.modulos.notificaciones.model import CorreoCola, Notificacion
 from app.modulos.notificaciones.plantillas import correo_evento
@@ -20,7 +21,38 @@ from app.modulos.pedidos.model import Historial, Pedido
 from app.modulos.tablero.catalogos import valor_config
 from app.modulos.usuarios.model import Permiso, Rol, Usuario, roles_permisos
 
-EVENTOS_CON_CORREO_DEFECTO = "pedido.creado,pedido.movido,pedido.asignado,pedido.completado,chat.mencion"
+EVENTOS_CON_CORREO_DEFECTO = (
+    "pedido.creado,pedido.movido,pedido.asignado,pedido.completado,chat.mencion,"
+    "ingreso.codigo_creado,ingreso.pedido_ingresado,ingreso.aprobado"
+)
+
+# Todos los avisos que existen, con quien los recibe (para mostrarlo en "Mis alertas")
+EVENTOS = [
+    ("pedido.creado", "Pedido nuevo", "Llega un pedido nuevo de comercial (dibujo, técnica y admin)"),
+    ("ingreso.codigo_creado", "Ya está el código del vehículo", "Técnica creó el código de tu pedido: te toca poner el número de pedido"),
+    ("ingreso.pedido_ingresado", "El comercial puso el número de pedido", "Un pedido quedó listo para aprobar (técnica, admin y asignados)"),
+    ("ingreso.aprobado", "Pedido aprobado", "Técnica aprobó el ingreso y el pedido pasó a la siguiente columna"),
+    ("pedido.asignado", "Me asignan un pedido", "Alguien te pone como responsable"),
+    ("pedido.movido", "Un pedido cambia de columna", "Un pedido tuyo, asignado a ti o que sigues avanza o se devuelve"),
+    ("pedido.completado", "Un pedido se termina", "Un pedido tuyo o que sigues llega a la columna final"),
+    ("chat.mencion", "Me mencionan en el chat", "Alguien escribe @tu-usuario en un pedido"),
+    ("chat.mensaje", "Mensajes del chat", "Cualquier mensaje nuevo en tus pedidos (puede ser mucho)"),
+    ("pedido.editado", "Editan un pedido", "Cambian datos o piezas de un pedido tuyo o que sigues"),
+    ("adjunto.subido", "Suben archivos", "Agregan fotos o planos a un pedido tuyo o que sigues"),
+]
+CODIGOS_EVENTOS = {e[0] for e in EVENTOS}
+
+
+def alertas_de(db: Session, u: Usuario) -> set[str]:
+    """Que avisos quiere esta persona por correo: los suyos, o los del admin si nunca los cambio."""
+    if u.alertas_correo is not None:
+        return {e.strip() for e in u.alertas_correo.split(",") if e.strip()}
+    return eventos_con_correo(db)
+
+
+def _correo_permitido(correo: str) -> bool:
+    solo = tuple(d.strip().lower() for d in get_settings().correo_solo_dominios.split(",") if d.strip())
+    return not solo or correo.lower().endswith(solo)
 
 
 def eventos_con_correo(db: Session) -> set[str]:
@@ -72,10 +104,10 @@ def registrar_evento(
     # a uno mismo no le llega aviso de lo que uno mismo hizo
     destinatarios = [u for u in {u.id: u for u in destinatarios}.values() if u.id != actor.id]
 
-    manda_correo = accion in eventos_con_correo(db)
     for u in destinatarios:
         db.add(Notificacion(usuario_id=u.id, pedido_id=pedido.id, tipo=accion, titulo=titulo, cuerpo=cuerpo))
-        if manda_correo and u.recibir_correos and u.correo:
+        # la campanita le llega siempre; el correo solo si la persona lo quiere para este tipo de aviso
+        if u.recibir_correos and u.correo and accion in alertas_de(db, u) and _correo_permitido(u.correo):
             asunto, html = correo_evento(pedido=pedido, actor=actor, titulo=titulo, cuerpo=cuerpo, para=u)
             db.add(CorreoCola(para=u.correo, asunto=asunto, html=html, evento=accion, pedido_id=pedido.id))
 

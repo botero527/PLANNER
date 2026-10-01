@@ -64,3 +64,6 @@
   .mis__progreso { width: auto; }
   .mis__estado { text-align: left; }
 }
+
+.mis__accion { display: inline-block; margin: 0 0 8px; padding: 4px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--agp-carbon-oscuro); background: var(--alerta); }
+.mis__espera { display: inline-block; margin: 0 0 8px; font-size: 12px; color: var(--texto-3); }

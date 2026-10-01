@@ -99,3 +99,18 @@
   color: var(--texto-3);
 }
 .campana__vacia p { margin: 8px 0 0; }
+
+.campana__config {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 6px 0;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--vidrio);
+  font-size: 13px;
+  color: var(--texto-2);
+  text-align: left;
+}
+.campana__config:hover { color: var(--texto); background: var(--vidrio-hover); }

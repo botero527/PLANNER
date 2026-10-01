@@ -57,6 +57,9 @@ class Usuario(ConFechas, Base):
     version_sesion: Mapped[int] = mapped_column(Integer, default=1)
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
     recibir_correos: Mapped[bool] = mapped_column(Boolean, default=True)
+    # que tipos de aviso quiere por correo (separados por coma). NULL = lo que diga
+    # la configuracion general del admin; asi el que nunca toca nada no se queda sin avisos
+    alertas_correo: Mapped[str | None] = mapped_column(String(500))
     ultimo_acceso: Mapped[datetime | None] = mapped_column(DateTime)
 
     rol: Mapped[Rol] = relationship(lazy="joined")

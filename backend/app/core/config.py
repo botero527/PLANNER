@@ -52,9 +52,17 @@ class Settings(BaseSettings):
     correo_remitente: str = "planner@agpglass.com"
     correo_intervalo_segundos: int = 10
     correo_intentos_max: int = 5
+    # Exchange Online deja ~30 correos por minuto desde un mismo buzon; quedamos por debajo
+    correo_max_por_minuto: int = 25
+    # a estos dominios NUNCA se manda nada (".invalid" esta reservado para pruebas por el RFC 2606)
+    correo_dominios_descartar: str = ".invalid"
+    # si tiene algo, SOLO se generan correos para esos dominios. Los tests lo ponen en ".invalid"
+    # para que una prueba nunca le escriba a una persona real (vacio = normal, a todos)
+    correo_solo_dominios: str = ""
     graph_tenant_id: str = ""
     graph_client_id: str = ""
     graph_client_secret: str = ""
+    power_automate_url: str = ""  # URL del disparador HTTP del flujo (es secreta)
 
     @property
     def odbc(self) -> str:

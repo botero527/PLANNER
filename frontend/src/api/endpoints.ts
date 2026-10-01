@@ -2,7 +2,7 @@
 // escriben una URL: llaman api.pedidos.mover(...) y listo.
 import { api } from './cliente'
 import type {
-  Adjunto, Bandeja, Catalogos, Columna, EdicionPedido, EntradaHistorial, ItemConfig, Mensaje,
+  Adjunto, Bandeja, Catalogos, Columna, MisAlertas, EdicionPedido, EntradaHistorial, ItemConfig, Mensaje,
   NuevoPedido, PedidoDetalle, Rol, Tablero, Usuario, UsuarioMini, Yo,
 } from './tipos'
 
@@ -17,6 +17,10 @@ export const auth = {
   yo: () => api<Yo>('/auth/yo'),
   cambiarPassword: (actual: string, nueva: string) =>
     api<Login>('/auth/cambiar-password', { method: 'POST', json: { actual, nueva } }),
+  alertas: () => api<MisAlertas>('/auth/alertas'),
+  guardarAlertas: (recibir_correos: boolean, activas: string[]) =>
+    api<MisAlertas>('/auth/alertas', { method: 'PUT', json: { recibir_correos, activas } }),
+  probarAlertas: () => api<{ ok: boolean; para: string; modo_envio: string }>('/auth/alertas/prueba', { method: 'POST' }),
 }
 
 export const tablero = {
@@ -48,6 +52,19 @@ export const pedidos = {
   editarItem: (itemId: number, datos: { texto?: string; hecho?: boolean }) =>
     api<PedidoDetalle>(`/pedidos/checklist/${itemId}`, { method: 'PATCH', json: datos }),
   borrarItem: (itemId: number) => api<PedidoDetalle>(`/pedidos/checklist/${itemId}`, { method: 'DELETE' }),
+}
+
+export const ingreso = {
+  marcarCodigo: (pedidoId: number, evidencia: File[], codigo?: string) => {
+    const form = new FormData()
+    evidencia.forEach((a) => form.append('evidencia', a))
+    if (codigo?.trim()) form.append('codigo', codigo.trim())
+    return api<PedidoDetalle>(`/pedidos/${pedidoId}/ingreso/codigo-vehiculo`, { method: 'POST', body: form })
+  },
+  deshacerCodigo: (pedidoId: number) => api<PedidoDetalle>(`/pedidos/${pedidoId}/ingreso/codigo-vehiculo`, { method: 'DELETE' }),
+  ponerNumero: (pedidoId: number, numero: string) =>
+    api<PedidoDetalle>(`/pedidos/${pedidoId}/ingreso/numero-pedido`, { method: 'PUT', json: { numero } }),
+  aprobar: (pedidoId: number) => api<PedidoDetalle>(`/pedidos/${pedidoId}/ingreso/aprobar`, { method: 'POST' }),
 }
 
 export const chat = {

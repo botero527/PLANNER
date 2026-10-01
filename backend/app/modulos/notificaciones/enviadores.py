@@ -5,6 +5,8 @@ Quien manda los correos de verdad. Hay dos y se escoge con PLN_CORREO_MODO:
   Doble clic en el .eml y Outlook lo abre tal cual como le llegaria a la persona.
 - graph: lo manda por Microsoft Graph. Necesita que TI registre la app en
   Azure AD con el permiso Mail.Send y cree el buzon remitente.
+- powerautomate: se lo pasa a un flujo de Power Automate (disparador HTTP) que
+  lo envia con la conexion de Outlook de la cuenta dueña del flujo. No necesita a TI.
 
 Los dos cumplen el mismo "contrato" (la clase Enviador), entonces el worker
 no sabe ni le importa cual esta usando.
@@ -91,7 +93,28 @@ class EnviadorGraph:
             raise RuntimeError(f"Graph respondio {respuesta.status_code}: {respuesta.text[:300]}")
 
 
+class EnviadorPowerAutomate:
+    """POST a la URL del disparador "Cuando se recibe una solicitud HTTP" de un flujo.
+    Esa URL trae una firma (sig=...) que hace de contraseña: va solo en el .env."""
+
+    def __init__(self) -> None:
+        if not settings.power_automate_url:
+            raise RuntimeError("PLN_CORREO_MODO=powerautomate pero falta PLN_POWER_AUTOMATE_URL")
+
+    def enviar(self, para: str, asunto: str, html: str) -> None:
+        respuesta = httpx.post(
+            settings.power_automate_url,
+            json={"para": para, "asunto": asunto, "html": html},
+            timeout=60,
+        )
+        # el flujo responde 200/202 si lo recibio; cualquier otra cosa se reintenta en la cola
+        if respuesta.status_code not in (200, 202):
+            raise RuntimeError(f"Power Automate respondio {respuesta.status_code}: {respuesta.text[:300]}")
+
+
 def crear_enviador() -> Enviador:
     if settings.correo_modo == "graph":
         return EnviadorGraph()
+    if settings.correo_modo == "powerautomate":
+        return EnviadorPowerAutomate()
     return EnviadorSimulado()

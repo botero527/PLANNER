@@ -1,20 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
-import { Bell, CheckCheck } from 'lucide-react'
+import { Bell, CheckCheck, Settings2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { notificaciones } from '@/api/endpoints'
 import { haceCuanto } from '@/utiles/formato'
+import { MisAlertas } from './MisAlertas'
 import { Personaje } from './personajes/Personaje'
 import './campana.css'
 
 const ICONO: Record<string, string> = {
   'pedido.creado': '📦', 'pedido.movido': '➡️', 'pedido.completado': '🎉', 'pedido.asignado': '🙋',
   'pedido.editado': '✏️', 'chat.mensaje': '💬', 'chat.mencion': '📣', 'adjunto.subido': '📎',
+  'ingreso.codigo_creado': '🔑', 'ingreso.pedido_ingresado': '🧾', 'ingreso.aprobado': '✅',
 }
 
 export function Campana() {
   const [abierta, setAbierta] = useState(false)
+  const [verAlertas, setVerAlertas] = useState(false)
   const caja = useRef<HTMLDivElement>(null)
   const qc = useQueryClient()
   const navegar = useNavigate()
@@ -64,6 +67,9 @@ export function Campana() {
                 </button>
               )}
             </div>
+            <button className="campana__config" onClick={() => { setAbierta(false); setVerAlertas(true) }}>
+              <Settings2 size={14} /> Configurar mis alertas por correo
+            </button>
             {!data?.items.length ? (
               <div className="campana__vacia">
                 <Personaje expresion="dormido" tamano={70} />
@@ -95,6 +101,7 @@ export function Campana() {
           </motion.div>
         )}
       </AnimatePresence>
+      <MisAlertas abierto={verAlertas} alCerrar={() => setVerAlertas(false)} />
     </div>
   )
 }

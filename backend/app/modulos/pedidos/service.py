@@ -13,6 +13,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 from app.core.eventos import anotar_evento
 from app.modulos.adjuntos import blob
 from app.modulos.adjuntos.model import Adjunto
+from app.modulos.adjuntos.schemas import adjunto_out
 from app.modulos.chat.model import Mensaje
 from app.modulos.notificaciones.service import registrar_evento, usuarios_con_permiso
 from app.modulos.pedidos.model import SEQ_PEDIDOS, ChecklistItem, Pedido, PedidoMiembro, PedidoPieza
@@ -22,6 +23,7 @@ from app.modulos.pedidos.schemas import (
 from app.modulos.tablero.catalogos import catalogo_piezas, mercados, valor_config
 from app.modulos.tablero.model import Columna, Etiqueta
 from app.modulos.usuarios.model import Usuario
+from app.modulos.usuarios.schemas import UsuarioMini
 
 HUECO = 1024  # distancia entre posiciones, ver mover()
 
@@ -179,8 +181,20 @@ def a_tarjetas(db: Session, pedidos: list[Pedido]) -> list[PedidoTarjeta]:
     return tarjetas
 
 
+def puede_poner_pedido(usuario: Usuario, pedido: Pedido) -> bool:
+    """El numero de pedido lo escribe el comercial que lo creo (o un admin)."""
+    return pedido.creado_por_id == usuario.id or usuario.puede("usuario.administrar")
+
+
 def a_detalle(db: Session, pedido: Pedido, usuario: Usuario) -> PedidoDetalle:
     tarjeta = a_tarjetas(db, [pedido])[0]
+    inicial_id = columna_inicial(db).id
+    evidencias = db.scalars(
+        select(Adjunto).where(Adjunto.pedido_id == pedido.id, Adjunto.categoria == "evidencia_codigo",
+                              Adjunto.eliminado == False)  # noqa: E712
+        .order_by(Adjunto.id)
+    ).all()
+    mini = lambda u: UsuarioMini.model_validate(u) if u else None  # noqa: E731
     return PedidoDetalle(
         **tarjeta.model_dump(),
         vin=pedido.vin,
@@ -192,7 +206,16 @@ def a_detalle(db: Session, pedido: Pedido, usuario: Usuario) -> PedidoDetalle:
         # en la base es texto JSON, hacia afuera sale como objeto
         datos_extra=json.loads(pedido.datos_extra) if pedido.datos_extra else None,
         actualizado_en=pedido.actualizado_en,
-        puedo_editar=puede_editar(usuario, pedido, columna_inicial(db).id),
+        puedo_editar=puede_editar(usuario, pedido, inicial_id),
+        codigo_vehiculo=pedido.codigo_vehiculo,
+        codigo_vehiculo_por=mini(pedido.codigo_vehiculo_por),
+        numero_pedido_en=pedido.numero_pedido_en,
+        numero_pedido_por=mini(pedido.numero_pedido_por),
+        aprobado_por=mini(pedido.aprobado_por),
+        evidencias=[adjunto_out(a) for a in evidencias],
+        en_ingreso=pedido.columna_id == inicial_id,
+        puedo_gestionar_ingreso=usuario.puede("ingreso.gestionar"),
+        puedo_poner_pedido=puede_poner_pedido(usuario, pedido),
     )
 
 
@@ -288,7 +311,7 @@ def editar(db: Session, pedido: Pedido, datos: PedidoEditar, usuario: Usuario) -
     return pedido
 
 
-def mover(db: Session, pedido: Pedido, datos: MoverIn, usuario: Usuario) -> Pedido:
+def mover(db: Session, pedido: Pedido, datos: MoverIn, usuario: Usuario, avisar: bool = True) -> Pedido:
     """Mueve la tarjeta a otra columna y/o puesto.
 
     Las posiciones van con huecos (1024, 2048, 3072...). Meter una tarjeta
@@ -304,6 +327,14 @@ def mover(db: Session, pedido: Pedido, datos: MoverIn, usuario: Usuario) -> Pedi
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Esa columna no existe")
     origen = db.get(Columna, pedido.columna_id)
     cambia_columna = destino.id != pedido.columna_id
+
+    # Regla del ingreso: de la primera columna solo se sale con la aprobacion de tecnica
+    # (codigo de vehiculo + numero de pedido + aprobado). Ni arrastrando se lo saltan.
+    if cambia_columna and origen and origen.es_inicial and not pedido.aprobado_en:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Este pedido todavía no está aprobado: primero código de vehículo, número de pedido y aprobación de técnica.",
+        )
 
     # solo lo necesario de los vecinos (id, posicion, terminado), sin cargar sus relaciones
     vecinos = db.execute(
@@ -357,7 +388,7 @@ def mover(db: Session, pedido: Pedido, datos: MoverIn, usuario: Usuario) -> Pedi
     for campo, valor in cambios.items():
         set_committed_value(pedido, campo, valor)
 
-    if cambia_columna:
+    if cambia_columna and avisar:
         terminado = destino.es_final
         registrar_evento(
             db, pedido=pedido, actor=usuario,

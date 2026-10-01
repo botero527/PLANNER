@@ -20,6 +20,7 @@ from app.core.config import get_settings
 from app.modulos.adjuntos.router import router as adjuntos
 from app.modulos.auth.router import router as auth
 from app.modulos.chat.router import router as chat
+from app.modulos.ingreso.router import router as ingreso
 from app.modulos.notificaciones.router import router as notificaciones
 from app.modulos.notificaciones.worker import cartero
 from app.modulos.pedidos.router import router as pedidos
@@ -56,7 +57,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth, usuarios, tablero, pedidos, chat, adjuntos, notificaciones):
+for r in (auth, usuarios, tablero, pedidos, ingreso, chat, adjuntos, notificaciones):
     app.include_router(r, prefix="/api")
 app.include_router(tiempo_real)
 

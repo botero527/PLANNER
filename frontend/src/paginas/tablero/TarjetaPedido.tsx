@@ -91,6 +91,7 @@ export function TarjetaPedido({ tarjeta: t, alAbrir, flotando }: { tarjeta: Tarj
       <p className="tarjeta__anio">
         {[t.version_vehiculo, t.anio].filter(Boolean).join(' · ')}
       </p>
+      {!t.aprobado_en && <ProgresoIngreso tarjeta={t} />}
       <div className="tarjeta__chips">
         <span className="tarjeta__chip">{t.mercado}</span>
         {t.tipo_vidrio === '3d' && <span className="tarjeta__chip tarjeta__chip--3d">3D</span>}
@@ -121,5 +122,21 @@ export function TarjetaPedido({ tarjeta: t, alAbrir, flotando }: { tarjeta: Tarj
         {asignados.length > 0 && <PilaAvatares usuarios={asignados} max={3} tamano={24} />}
       </footer>
     </article>
+  )
+}
+
+/** 3 rayitas: codigo de vehiculo -> numero de pedido -> aprobado (solo en la primera columna) */
+function ProgresoIngreso({ tarjeta: t }: { tarjeta: Tarjeta }) {
+  const pasos = [
+    { ok: Boolean(t.codigo_vehiculo_en), texto: 'Código de vehículo' },
+    { ok: Boolean(t.numero_pedido), texto: 'Número de pedido' },
+    { ok: false, texto: 'Aprobación' },
+  ]
+  const falta = pasos.find((p) => !p.ok)
+  return (
+    <div className="tarjeta__ingreso" title={`Ingreso: falta ${falta?.texto.toLowerCase()}`}>
+      <div className="tarjeta__ingreso-barras">{pasos.map((p, i) => <span key={i} className={p.ok ? 'ok' : ''} />)}</div>
+      <small>Falta: {falta?.texto}</small>
+    </div>
   )
 }

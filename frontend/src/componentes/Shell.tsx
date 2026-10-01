@@ -1,6 +1,6 @@
 // El "marco" de la app ya logueado: menu lateral + barra de arriba + contenido.
 import { AnimatePresence, motion } from 'motion/react'
-import { ClipboardList, KanbanSquare, LogOut, Moon, PackagePlus, PanelLeftClose, PanelLeftOpen, Settings2, Sun, Users } from 'lucide-react'
+import { BellRing, ClipboardList, KanbanSquare, LogOut, Moon, PackagePlus, PanelLeftClose, PanelLeftOpen, Settings2, Sun, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { useTiempoReal } from '@/api/tiempoReal'
@@ -8,6 +8,7 @@ import { useAuth } from '@/auth/AuthContext'
 import { usePreferencia } from '@/utiles/preferencias'
 import { Avatar, PilaAvatares } from './Avatar'
 import { Campana } from './Campana'
+import { MisAlertas } from './MisAlertas'
 import { AvisosEnVivo } from './AvisosEnVivo'
 import { LogoAGP } from './LogoAGP'
 import { Personaje } from './personajes/Personaje'
@@ -40,6 +41,7 @@ export function Shell() {
   const [tema, alternarTema] = useTema()
   const ubicacion = useLocation()
   const [compacto, setCompacto] = usePreferencia<'si' | 'no'>('menu-compacto', 'no')
+  const [alertas, setAlertas] = useState(false)
   // useOutlet() y no <Outlet />: <Outlet /> siempre pinta la ruta ACTUAL, entonces
   // durante la animacion de salida la pagina vieja ya mostraba la nueva y habia
   // dos copias vivas (lo que uno escribia en la primera se perdia). Con useOutlet
@@ -93,10 +95,10 @@ export function Shell() {
 
         <div className="shell__yo">
           <Avatar usuario={usuario} tamano={38} enLinea={conectado} />
-          <div className="shell__yo-texto">
+          <button className="shell__yo-texto" onClick={() => setAlertas(true)} title="Mis alertas por correo">
             <strong>{usuario.nombre}</strong>
-            <span style={{ color: usuario.rol.color }}>{usuario.rol.nombre}</span>
-          </div>
+            <span style={{ color: usuario.rol.color }}>{usuario.rol.nombre} · <BellRing size={11} /> alertas</span>
+          </button>
           <button className="btn btn-fantasma btn-icono" onClick={salir} aria-label="Cerrar sesión" title="Cerrar sesión">
             <LogOut size={18} />
           </button>
@@ -137,6 +139,7 @@ export function Shell() {
         </main>
       </div>
       <AvisosEnVivo />
+      <MisAlertas abierto={alertas} alCerrar={() => setAlertas(false)} />
     </div>
   )
 }

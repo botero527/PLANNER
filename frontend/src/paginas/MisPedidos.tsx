@@ -79,6 +79,11 @@ export default function MisPedidos() {
                   <div className="mis__principal">
                     <span className="mono sutil">{p.codigo}</span>
                     <h3>{p.marca} <span>{p.modelo}</span> {p.version_vehiculo && <small>{p.version_vehiculo}</small>}</h3>
+                    {!p.aprobado_en && p.codigo_vehiculo_en && !p.numero_pedido && (
+                      <span className="mis__accion">⚠ Ya está el código del vehículo: te falta poner el número de pedido</span>
+                    )}
+                    {!p.aprobado_en && !p.codigo_vehiculo_en && <span className="mis__espera">Esperando que técnica cree el código del vehículo</span>}
+                    {!p.aprobado_en && p.numero_pedido && <span className="mis__espera">Esperando aprobación de técnica</span>}
                     <div className="mis__datos">
                       <span className="chip">{p.mercado}</span>
                       {p.tipo_vidrio === '3d' && <span className="chip" style={{ color: 'var(--primario)' }}>3D</span>}

@@ -6,15 +6,16 @@ import { toast } from 'sonner'
 import { ErrorApi } from '@/api/cliente'
 import { pedidos, tablero, usuarios } from '@/api/endpoints'
 import { ponerAsignados, refrescarPronto } from '@/api/cacheLocal'
-import type { Etiqueta, ItemChecklist, PedidoDetalle, Prioridad, TipoVidrio, UsuarioMini } from '@/api/tipos'
+import type { Columna, Etiqueta, ItemChecklist, PedidoDetalle, Prioridad, TipoVidrio, UsuarioMini } from '@/api/tipos'
 import { useAuth } from '@/auth/AuthContext'
 import { Avatar } from '@/componentes/Avatar'
 import { EditorPiezas, nuevaPieza, type PiezaEditable } from '@/componentes/EditorPiezas'
 import { diasPara, fechaCorta, NOMBRE_PRIORIDAD } from '@/utiles/formato'
+import { BloqueIngreso } from './BloqueIngreso'
 
 const PRIORIDADES: Prioridad[] = ['baja', 'media', 'alta', 'urgente']
 
-export function PestanaDetalles({ pedido, etiquetas }: { pedido: PedidoDetalle; etiquetas: Etiqueta[] }) {
+export function PestanaDetalles({ pedido, etiquetas, columnas }: { pedido: PedidoDetalle; etiquetas: Etiqueta[]; columnas: Columna[] }) {
   const { puede } = useAuth()
   const qc = useQueryClient()
   const [editando, setEditando] = useState(false)
@@ -26,6 +27,7 @@ export function PestanaDetalles({ pedido, etiquetas }: { pedido: PedidoDetalle; 
 
   return (
     <div className="detalles">
+      <BloqueIngreso pedido={pedido} columnas={columnas} />
       {editando ? (
         <FormularioEdicion pedido={pedido} etiquetas={etiquetas} alTerminar={(p) => { if (p) alGuardar(p); setEditando(false) }} />
       ) : (

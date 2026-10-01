@@ -432,3 +432,5 @@
 
 .archivos__lista li { cursor: pointer; transition: border-color var(--rapido), transform var(--rapido) var(--suave); }
 .archivos__lista li:hover { border-color: var(--borde-fuerte); transform: translateX(2px); }
+
+.archivos__evidencia { height: 18px; margin-left: 6px; font-size: 10px; color: var(--exito); border-color: color-mix(in srgb, var(--exito) 40%, transparent); }

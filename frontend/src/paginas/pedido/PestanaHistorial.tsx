@@ -15,11 +15,16 @@ const DESCRIPCION: Record<string, (d: Record<string, unknown> | null) => string>
   'pedido.asignado': (d) => `asignó a ${(d?.asignados as string[] | undefined)?.join(', ')}`,
   'adjunto.subido': (d) => `subió ${(d?.archivos as string[] | undefined)?.join(', ')}`,
   'pedido.eliminado': () => 'eliminó el pedido',
+  'ingreso.codigo_creado': (d) => `creó el código de vehículo${d?.codigo ? ` ${d.codigo}` : ''} y subió la evidencia`,
+  'ingreso.codigo_deshecho': () => 'deshizo la marca del código de vehículo',
+  'ingreso.pedido_ingresado': (d) => (d?.antes ? `corrigió el número de pedido a ${d?.numero}` : `puso el número de pedido ${d?.numero}`),
+  'ingreso.aprobado': (d) => `aprobó el ingreso y lo pasó a «${d?.a}» ✅`,
 }
 
 const COLOR: Record<string, string> = {
   'pedido.creado': 'var(--info)', 'pedido.movido': 'var(--agp-acero)', 'pedido.completado': 'var(--exito)',
   'pedido.asignado': 'var(--alerta)', 'adjunto.subido': 'var(--agp-cielo)', 'pedido.eliminado': 'var(--peligro)',
+  'ingreso.codigo_creado': 'var(--agp-acero)', 'ingreso.pedido_ingresado': 'var(--agp-cielo)', 'ingreso.aprobado': 'var(--exito)',
 }
 
 export function PestanaHistorial({ pedidoId }: { pedidoId: number }) {

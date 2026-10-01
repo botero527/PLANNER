@@ -20,6 +20,8 @@ class Adjunto(Base):
     blob_nombre: Mapped[str] = mapped_column(Unicode(400), unique=True)
     tipo_mime: Mapped[str] = mapped_column(String(120))
     tamano_bytes: Mapped[int] = mapped_column(BigInteger)
+    # "general" = cualquier archivo; "evidencia_codigo" = prueba de que se creo el codigo del vehiculo
+    categoria: Mapped[str] = mapped_column(String(20), default="general", server_default="general")
     subido_por_id: Mapped[int] = mapped_column(ForeignKey("USUARIOS.id"))
     eliminado: Mapped[bool] = mapped_column(Boolean, default=False)
     creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.sysutcdatetime())

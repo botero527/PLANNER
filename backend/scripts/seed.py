@@ -30,6 +30,7 @@ PERMISOS = {
     "usuario.administrar": "Crear usuarios, cambiar roles y resetear contraseñas",
     "tablero.configurar": "Cambiar columnas, etiquetas y parametros",
     "notificacion.pedidos_nuevos": "Recibir aviso de cada pedido nuevo",
+    "ingreso.gestionar": "Marcar el código de vehículo creado y aprobar el ingreso del pedido",
 }
 
 TRABAJO = ["pedido.ver", "pedido.editar", "tarjeta.mover", "chat.escribir", "adjunto.subir", "notificacion.pedidos_nuevos"]
@@ -39,7 +40,7 @@ ROLES = {
     "comercial": ("Comercial", "Crea los pedidos y hace seguimiento", "#3FD1A5",
                   ["pedido.crear", "pedido.ver", "chat.escribir", "adjunto.subir"]),
     "dibujante": ("Dibujante", "Dibuja las piezas del pedido", "#7C8CFF", TRABAJO),
-    "tecnico": ("Técnico", "Revisa y valida la parte tecnica", "#FF7AA8", TRABAJO),
+    "tecnico": ("Técnico", "Revisa y valida la parte tecnica", "#FF7AA8", TRABAJO + ["ingreso.gestionar"]),
 }
 
 # Borrador de 5 estados. Se cambian desde la app (admin) sin tocar codigo.
@@ -57,7 +58,8 @@ ETIQUETAS = [
 ]
 
 CONFIG = {
-    "correo.eventos": ("pedido.creado,pedido.movido,pedido.asignado,pedido.completado,chat.mencion",
+    "correo.eventos": ("pedido.creado,pedido.movido,pedido.asignado,pedido.completado,chat.mencion,"
+                       "ingreso.codigo_creado,ingreso.pedido_ingresado,ingreso.aprobado",
                        "Eventos que ademas de la campanita mandan correo (separados por coma)"),
     "tablero.dias_visibles_terminados": ("30", "Dias que un pedido terminado sigue visible en el tablero"),
     "pedido.mercados": ("México,LATAM,Europa,Asia,USA", "Opciones del desplegable Mercado del formulario (separadas por coma)"),
@@ -164,7 +166,7 @@ def main() -> None:
                 continue
             clave = clave_temporal()
             db.add(Usuario(usuario=usuario, nombre=nombre, rol_id=roles[rol].id, personaje=personaje,
-                           correo=f"{usuario}@demo.agp.local",  # dominio falso a proposito
+                           correo=f"{usuario}@planner.invalid",  # .invalid: el cartero nunca le manda nada
                            password=guardar_password(clave), debe_cambiar_password=True))
             creados.append((usuario, clave))
 

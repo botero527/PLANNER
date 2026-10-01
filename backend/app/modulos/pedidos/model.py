@@ -51,6 +51,19 @@ class Pedido(ConFechas, Base):
     posicion: Mapped[int] = mapped_column(Integer)  # orden dentro de la columna, con huecos de 1024
 
     creado_por_id: Mapped[int] = mapped_column(ForeignKey("USUARIOS.id"))
+
+    # Ingreso del pedido (pasa en la primera columna, antes de ir a Ingenieria):
+    # 1) tecnica crea el codigo del vehiculo y sube evidencia
+    codigo_vehiculo: Mapped[str | None] = mapped_column(Unicode(80))
+    codigo_vehiculo_en: Mapped[datetime | None] = mapped_column(DateTime)
+    codigo_vehiculo_por_id: Mapped[int | None] = mapped_column(ForeignKey("USUARIOS.id"))
+    # 2) el comercial escribe el numero de pedido
+    numero_pedido: Mapped[str | None] = mapped_column(Unicode(60))
+    numero_pedido_en: Mapped[datetime | None] = mapped_column(DateTime)
+    numero_pedido_por_id: Mapped[int | None] = mapped_column(ForeignKey("USUARIOS.id"))
+    # 3) tecnica aprueba y el pedido pasa solo a la segunda columna
+    aprobado_en: Mapped[datetime | None] = mapped_column(DateTime)
+    aprobado_por_id: Mapped[int | None] = mapped_column(ForeignKey("USUARIOS.id"))
     completado_en: Mapped[datetime | None] = mapped_column(DateTime)
     eliminado: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -64,6 +77,9 @@ class Pedido(ConFechas, Base):
     __mapper_args__ = {"version_id_col": version}
 
     creado_por: Mapped[Usuario] = relationship(foreign_keys=[creado_por_id], lazy="joined")
+    codigo_vehiculo_por: Mapped[Usuario | None] = relationship(foreign_keys=[codigo_vehiculo_por_id], lazy="joined")
+    numero_pedido_por: Mapped[Usuario | None] = relationship(foreign_keys=[numero_pedido_por_id], lazy="joined")
+    aprobado_por: Mapped[Usuario | None] = relationship(foreign_keys=[aprobado_por_id], lazy="joined")
     piezas: Mapped[list["PedidoPieza"]] = relationship(
         back_populates="pedido", cascade="all, delete-orphan", lazy="selectin",
         order_by="PedidoPieza.orden",

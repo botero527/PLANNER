@@ -7,6 +7,8 @@ Outlook caido reciba una avalancha de reintentos.
 """
 import logging
 import threading
+import time
+from collections import deque
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
@@ -20,6 +22,17 @@ from app.modulos.notificaciones.model import CorreoCola
 log = logging.getLogger("planner.correo")
 settings = get_settings()
 LOTE = 20
+
+# Momentos de los ultimos envios, para no pasar el limite por minuto.
+# Si se llega al tope, lo que falta se queda en la cola y sale en la siguiente vuelta.
+_enviados: deque[float] = deque()
+
+
+def _hay_cupo() -> bool:
+    ahora = time.monotonic()
+    while _enviados and ahora - _enviados[0] > 60:
+        _enviados.popleft()
+    return len(_enviados) < settings.correo_max_por_minuto
 
 
 def _ahora() -> datetime:
@@ -38,7 +51,19 @@ def procesar_lote(enviador: Enviador) -> int:
             .with_hint(CorreoCola, "WITH (UPDLOCK, READPAST, ROWLOCK)", "mssql")
         ).all()
 
+        descartar = tuple(d.strip().lower() for d in settings.correo_dominios_descartar.split(",") if d.strip())
         for correo in pendientes:
+            # red de seguridad: los correos de prueba (dominio .invalid) se descartan sin enviar,
+            # asi una prueba nunca llega al flujo real aunque el backend este en modo Power Automate
+            if descartar and correo.para.lower().endswith(descartar):
+                correo.estado = "descartado"
+                correo.ultimo_error = "dominio de prueba: no se envia"
+                db.commit()
+                continue
+            if not _hay_cupo():
+                log.info("limite de %s correos/minuto: el resto espera su turno en la cola", settings.correo_max_por_minuto)
+                break
+            _enviados.append(time.monotonic())
             try:
                 enviador.enviar(correo.para, correo.asunto, correo.html)
                 correo.estado = "enviado"

@@ -97,6 +97,9 @@
   min-width: 0;
   flex: 1;
 }
+.shell__yo-texto { border: none; background: none; padding: 0; text-align: left; cursor: pointer; }
+.shell__yo-texto:hover strong { color: var(--primario); }
+.shell__yo-texto span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
 .shell__yo-texto strong {
   font-size: 14px;
   white-space: nowrap;

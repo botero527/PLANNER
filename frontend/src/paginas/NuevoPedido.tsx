@@ -124,6 +124,7 @@ export default function NuevoPedido() {
     creado_por: usuario, miembros: [], etiquetas: datosTablero?.etiquetas.filter((e) => etiquetas.includes(e.id)) ?? [],
     total_piezas: piezas.length, checklist_hechos: 0, checklist_total: 0,
     total_mensajes: 0, total_adjuntos: archivos.length, portada_url: null, completado_en: null, creado_en: new Date().toISOString(), version: 1,
+    codigo_vehiculo_en: null, numero_pedido: null, aprobado_en: null,
   } : null
 
   const primeraImagen = archivos.find((a) => a.type.startsWith('image/'))

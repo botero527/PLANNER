@@ -379,3 +379,10 @@
 .tablero__vista button:hover { color: var(--texto); }
 .tablero__vista button.activo { color: var(--texto); background: color-mix(in srgb, var(--primario) 18%, transparent); }
 @media (max-width: 900px) { .tablero__vista { display: none; } }
+
+/* progreso del ingreso en la tarjeta (primera columna) */
+.tarjeta__ingreso { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.tarjeta__ingreso-barras { display: flex; gap: 3px; }
+.tarjeta__ingreso-barras span { width: 16px; height: 5px; border-radius: 3px; background: var(--borde-fuerte); }
+.tarjeta__ingreso-barras span.ok { background: var(--exito); }
+.tarjeta__ingreso small { font-size: 11px; color: var(--texto-3); }

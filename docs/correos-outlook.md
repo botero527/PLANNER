@@ -6,7 +6,32 @@ Cada evento configurado (pedido nuevo, cambio de columna, asignación, terminado
 
 Qué eventos mandan correo se escoge en la app: **Configurar → ¿Qué manda correo a Outlook?**
 
-## Activar los correos reales (lo que hay que pedirle a TI)
+## Opción rápida: Power Automate (sin esperar a TI)
+
+El Planner le pasa cada correo a un flujo de Power Automate de la cuenta `powerapps.ingenieria@agpglass.com`, y el flujo lo envía con su conexión de Outlook.
+
+> El SMTP con usuario y clave de esa cuenta **no sirve**: Office 365 lo rechaza (`535 5.7.3`), porque Microsoft apagó ese tipo de inicio de sesión.
+
+**Requisito:** el disparador *"Cuando se recibe una solicitud HTTP"* es **Premium**. La cuenta necesita licencia Power Automate Premium o Power Apps por usuario.
+
+**El flujo** (*Crear → Flujo de nube instantáneo*, o automatizado en blanco):
+1. Disparador **Cuando se recibe una solicitud HTTP**, con este esquema JSON:
+   ```json
+   { "type": "object", "properties": { "para": { "type": "string" }, "asunto": { "type": "string" }, "html": { "type": "string" } } }
+   ```
+2. Acción **Office 365 Outlook → Enviar un correo electrónico (V2)**: *Para* = `para`, *Asunto* = `asunto`, *Cuerpo* = `html`.
+3. Guardar y copiar la **URL HTTP POST** que aparece en el disparador.
+
+En `backend/.env`:
+```env
+PLN_CORREO_MODO=powerautomate
+PLN_POWER_AUTOMATE_URL=<la URL del disparador>
+```
+La URL trae una firma (`sig=`) que funciona como contraseña: va **solo** en el `.env`.
+
+Probar: `.venv\Scripts\python -m scripts.probar_correo tu.correo@agpglass.com`
+
+## Opción definitiva: Microsoft Graph (lo que hay que pedirle a TI)
 
 Se usa **Microsoft Graph** (`POST /users/{remitente}/sendMail`). No se usa SMTP con usuario y clave porque Microsoft está apagando esa autenticación básica en Exchange Online.
 

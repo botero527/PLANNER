@@ -105,6 +105,10 @@ export interface Tarjeta {
   completado_en: string | null
   creado_en: string
   version: number
+  // ingreso (primera columna)
+  codigo_vehiculo_en: string | null
+  numero_pedido: string | null
+  aprobado_en: string | null
 }
 
 export interface PedidoDetalle extends Tarjeta {
@@ -117,6 +121,15 @@ export interface PedidoDetalle extends Tarjeta {
   datos_extra: Record<string, unknown> | null
   actualizado_en: string
   puedo_editar: boolean
+  codigo_vehiculo: string | null
+  codigo_vehiculo_por: UsuarioMini | null
+  numero_pedido_en: string | null
+  numero_pedido_por: UsuarioMini | null
+  aprobado_por: UsuarioMini | null
+  evidencias: Adjunto[]
+  en_ingreso: boolean
+  puedo_gestionar_ingreso: boolean
+  puedo_poner_pedido: boolean
 }
 
 export interface Tablero {
@@ -133,6 +146,7 @@ export interface Adjunto {
   tipo_mime: string
   tamano_bytes: number
   es_imagen: boolean
+  categoria: 'general' | 'evidencia_codigo'
   url: string
   url_descarga: string
   subido_por: UsuarioMini
@@ -172,6 +186,15 @@ export interface Notificacion {
 export interface Bandeja {
   sin_leer: number
   items: Notificacion[]
+}
+
+export interface MisAlertas {
+  correo: string | null
+  recibir_correos: boolean
+  eventos: { id: string; nombre: string; descripcion: string }[]
+  activas: string[]
+  personalizadas: boolean
+  modo_envio: string
 }
 
 export interface ItemConfig {

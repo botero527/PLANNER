@@ -98,7 +98,7 @@ export function PestanaArchivos({ pedido }: { pedido: PedidoDetalle }) {
                 <li key={a.id} className={`vidrio ${sePuedeVer(a) ? 'se-ve' : ''}`} onClick={() => setViendo(ordenados.indexOf(a))}>
                   <span className="archivos__icono"><Icono size={20} /></span>
                   <div className="archivos__info">
-                    <strong>{a.nombre}</strong>
+                    <strong>{a.nombre} {a.categoria === 'evidencia_codigo' && <span className="chip archivos__evidencia">Evidencia código</span>}</strong>
                     <span>{tamanoArchivo(a.tamano_bytes)} · {a.subido_por.nombre} · {haceCuanto(a.creado_en)}</span>
                   </div>
                   {sePuedeVer(a) && <span className="btn btn-fantasma btn-icono" title="Vista previa"><Eye size={17} /></span>}

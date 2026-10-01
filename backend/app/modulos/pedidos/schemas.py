@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.tipos import FechaUTC
+from app.modulos.adjuntos.schemas import AdjuntoOut
 from app.modulos.usuarios.schemas import UsuarioMini
 
 Prioridad = Literal["baja", "media", "alta", "urgente"]
@@ -162,6 +163,10 @@ class PedidoTarjeta(BaseModel):
     completado_en: FechaUTC | None
     creado_en: FechaUTC
     version: int
+    # ingreso (primera columna): para pintar el progreso en la tarjeta
+    codigo_vehiculo_en: FechaUTC | None = None
+    numero_pedido: str | None = None
+    aprobado_en: FechaUTC | None = None
 
 
 class PedidoDetalle(PedidoTarjeta):
@@ -174,6 +179,16 @@ class PedidoDetalle(PedidoTarjeta):
     datos_extra: dict | None = None
     actualizado_en: FechaUTC
     puedo_editar: bool = False
+    # detalle del ingreso
+    codigo_vehiculo: str | None = None
+    codigo_vehiculo_por: UsuarioMini | None = None
+    numero_pedido_en: FechaUTC | None = None
+    numero_pedido_por: UsuarioMini | None = None
+    aprobado_por: UsuarioMini | None = None
+    evidencias: list[AdjuntoOut] = []
+    en_ingreso: bool = False          # esta en la primera columna
+    puedo_gestionar_ingreso: bool = False  # tecnica/admin: marcar codigo y aprobar
+    puedo_poner_pedido: bool = False       # el comercial dueño (o admin) escribe el numero
 
 
 class HistorialOut(BaseModel):
