@@ -1,56 +1,74 @@
-import re
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.tipos import FechaUTC
 from app.modulos.usuarios.schemas import UsuarioMini
 
 Prioridad = Literal["baja", "media", "alta", "urgente"]
-
-# El VIN tiene 17 caracteres y nunca lleva I, O ni Q (se confunden con 1 y 0)
-PATRON_VIN = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
+TipoVidrio = Literal["original", "3d"]
 ANIO_MAX = date.today().year + 2
 
 
 class PiezaIn(BaseModel):
-    nombre: str = Field(min_length=1, max_length=150)
-    cantidad: int = Field(default=1, ge=1, le=9999)
+    codigo: str | None = Field(default=None, max_length=3)  # si viene, el nombre sale del catalogo
+    nombre: str = Field(default="", max_length=150)
     observacion: str | None = Field(default=None, max_length=500)
 
+    @field_validator("codigo")
+    @classmethod
+    def codigo_limpio(cls, v: str | None) -> str | None:
+        v = (v or "").strip()
+        if not v:
+            return None
+        if not v.isdigit() or len(v) > 3:
+            raise ValueError("El código de pieza son hasta 3 números (ej: 000, 001)")
+        return v.zfill(3)  # "1" -> "001"
 
-class PiezaOut(PiezaIn):
+
+class PiezaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    codigo: str | None
+    nombre: str
+    observacion: str | None
 
 
 class _CamposVehiculo(BaseModel):
     @field_validator("vin", check_fields=False)
     @classmethod
-    def vin_valido(cls, v: str | None) -> str | None:
-        if v is None or not v.strip():
-            return None
-        v = v.strip().upper().replace(" ", "")
-        if not PATRON_VIN.match(v):
-            raise ValueError("El VIN debe tener 17 caracteres (letras y números, sin I, O ni Q)")
-        return v
+    def vin_limpio(cls, v: str | None) -> str | None:
+        # libre: puede ser largo, traer varios VIN o notas. Solo le quitamos los bordes
+        return v.strip() if v is not None else v
 
-    @field_validator("vehiculo", "modelo", "cliente", check_fields=False)
+    @field_validator("marca", "modelo", "version_vehiculo", "plataforma", check_fields=False)
     @classmethod
     def sin_espacios_de_mas(cls, v: str | None) -> str | None:
         return " ".join(v.split()) if v else v
 
+    @model_validator(mode="after")
+    def drive_si_es_3d(self):
+        # si es 3D hay que decir si la informacion ya esta en Drive; si es original no aplica
+        tipo = getattr(self, "tipo_vidrio", None)
+        if tipo == "3d" and getattr(self, "info_en_drive", None) is None:
+            raise ValueError("Si el vidrio es 3D, indica si la información ya está en Drive")
+        if tipo == "original":
+            self.info_en_drive = None
+        return self
+
 
 class PedidoCrear(_CamposVehiculo):
-    vehiculo: str = Field(min_length=1, max_length=120)
-    modelo: str | None = Field(default=None, max_length=120)
+    marca: str = Field(min_length=1, max_length=80)
+    modelo: str = Field(min_length=1, max_length=120)
+    version_vehiculo: str | None = Field(default=None, max_length=120)
+    plataforma: str | None = Field(default=None, max_length=80)
     anio: int | None = Field(default=None, ge=1950, le=ANIO_MAX)
-    vin: str | None = None
-    cliente: str | None = Field(default=None, max_length=150)
+    vin: str = Field(min_length=1)
+    mercado: str = Field(min_length=1, max_length=40)
+    tipo_vidrio: TipoVidrio = "original"
+    info_en_drive: bool | None = None
     descripcion: str | None = Field(default=None, max_length=4000)
-    prioridad: Prioridad = "media"
-    fecha_requerida: date | None = None
     piezas: list[PiezaIn] = Field(min_length=1, max_length=100)
     asignados: list[int] = Field(default_factory=list, max_length=20)
     etiquetas: list[int] = Field(default_factory=list, max_length=10)
@@ -59,11 +77,15 @@ class PedidoCrear(_CamposVehiculo):
 
 class PedidoEditar(_CamposVehiculo):
     version: int  # la que tenia el pedido cuando la persona abrio el formulario
-    vehiculo: str | None = Field(default=None, min_length=1, max_length=120)
-    modelo: str | None = Field(default=None, max_length=120)
+    marca: str | None = Field(default=None, min_length=1, max_length=80)
+    modelo: str | None = Field(default=None, min_length=1, max_length=120)
+    version_vehiculo: str | None = Field(default=None, max_length=120)
+    plataforma: str | None = Field(default=None, max_length=80)
     anio: int | None = Field(default=None, ge=1950, le=ANIO_MAX)
-    vin: str | None = None
-    cliente: str | None = Field(default=None, max_length=150)
+    vin: str | None = Field(default=None, min_length=1)
+    mercado: str | None = Field(default=None, min_length=1, max_length=40)
+    tipo_vidrio: TipoVidrio | None = None
+    info_en_drive: bool | None = None
     descripcion: str | None = Field(default=None, max_length=4000)
     prioridad: Prioridad | None = None
     fecha_requerida: date | None = None
@@ -118,9 +140,12 @@ class PedidoTarjeta(BaseModel):
 
     id: int
     codigo: str
-    vehiculo: str
-    modelo: str | None
+    marca: str
+    modelo: str
+    version_vehiculo: str | None
     anio: int | None
+    mercado: str
+    tipo_vidrio: str
     prioridad: str
     fecha_requerida: date | None
     columna_id: int
@@ -140,8 +165,9 @@ class PedidoTarjeta(BaseModel):
 
 
 class PedidoDetalle(PedidoTarjeta):
-    vin: str | None
-    cliente: str | None
+    vin: str
+    plataforma: str | None
+    info_en_drive: bool | None
     descripcion: str | None
     piezas: list[PiezaOut]
     checklist: list[ChecklistOut]

@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import requiere
+from app.core import cache
 from app.core.eventos import anotar_evento
 from app.modulos.pedidos import service as pedidos
 from app.modulos.pedidos.schemas import EtiquetaOut, PedidoTarjeta
+from app.modulos.tablero.catalogos import catalogo_piezas, mercados
 from app.modulos.tablero.model import Columna, Configuracion, Etiqueta
 from app.modulos.usuarios.model import Usuario
 
@@ -71,6 +73,17 @@ class ConfigIn(BaseModel):
     valor: str = Field(max_length=2000)
 
 
+class PiezaCatalogoOut(BaseModel):
+    codigo: str
+    nombre: str
+    simetrica: str | None
+
+
+class CatalogosOut(BaseModel):
+    piezas: list[PiezaCatalogoOut]
+    mercados: list[str]
+
+
 def _columnas(db: Session) -> list[Columna]:
     return list(db.scalars(select(Columna).where(Columna.activa).order_by(Columna.orden)))
 
@@ -81,6 +94,16 @@ def tablero(_: Usuario = Depends(requiere("pedido.ver")), db: Session = Depends(
         columnas=_columnas(db),
         pedidos=pedidos.a_tarjetas(db, pedidos.pedidos_del_tablero(db)),
         etiquetas=db.scalars(select(Etiqueta).where(Etiqueta.activa).order_by(Etiqueta.nombre)).all(),
+    )
+
+
+@router.get("/catalogos", response_model=CatalogosOut)
+def catalogos(_: Usuario = Depends(requiere("pedido.ver")), db: Session = Depends(get_db)):
+    """Lo que necesita el formulario: piezas con su codigo y simetrica, y los mercados."""
+    piezas = sorted(catalogo_piezas(db).values(), key=lambda p: p.codigo)
+    return CatalogosOut(
+        piezas=[PiezaCatalogoOut(codigo=p.codigo, nombre=p.nombre, simetrica=p.simetrica) for p in piezas],
+        mercados=mercados(db),
     )
 
 
@@ -147,4 +170,5 @@ def guardar_config(clave: str, datos: ConfigIn, _: Usuario = Depends(requiere("t
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Esa clave de configuración no existe")
     fila.valor = datos.valor
     db.commit()
+    cache.invalidar(f"config:{clave}")  # que el cambio se vea de una, sin esperar a que venza el cache
     return fila

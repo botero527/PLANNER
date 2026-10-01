@@ -192,7 +192,7 @@
   background: var(--campo);
   text-align: left;
 }
-.detalles__persona span { flex: 1; font-size: 14px; }
+.detalles__persona-nombre { flex: 1; font-size: 14px; }
 .detalles__persona.activa { border-color: var(--primario); background: color-mix(in srgb, var(--primario) 16%, transparent); }
 .detalles__persona.activa svg { color: var(--primario); }
 
@@ -243,7 +243,6 @@
   padding: 3px 12px;
   border-radius: 999px;
   background: var(--vidrio);
-  text-transform: capitalize;
 }
 
 .msj { display: flex; gap: 10px; margin-top: 12px; max-width: 86%; }
@@ -267,8 +266,8 @@
   border-radius: 16px 16px 6px 16px;
   border: none;
   color: #fff;
-  background: linear-gradient(135deg, #5b7cff, #8a5bff);
-  box-shadow: 0 8px 22px -12px #6c5bff;
+  background: var(--burbuja-mia);
+  box-shadow: 0 8px 22px -12px var(--agp-profundo);
 }
 .msj--mio.msj--agrupado .msj__burbuja { border-radius: 16px 6px 6px 16px; }
 .msj__texto { margin: 0; white-space: pre-wrap; word-break: break-word; }
@@ -461,3 +460,32 @@
   .detalles__datos, .rejilla-2, .detalles__equipo { grid-template-columns: 1fr 1fr; }
   .msj { max-width: 95%; }
 }
+
+.detalles__vin { margin: 0; }
+.detalles__vin dt { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--texto-3); }
+.detalles__vin dd { margin: 2px 0 0; font-weight: 600; white-space: pre-wrap; word-break: break-all; }
+.texto-exito { color: var(--exito); }
+
+.msj--pendiente .msj__burbuja { opacity: 0.6; }
+.msj--pendiente .msj__cabeza span { font-style: italic; }
+
+.detalle__3d { color: var(--agp-carbon-oscuro); background: var(--agp-cielo); border-color: transparent; }
+
+.detalles__acciones-bloque { display: flex; gap: 6px; }
+.detalles__chip-persona { gap: 6px; padding-right: 4px; }
+.detalles__quitar {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--texto-3);
+  transition: background var(--rapido), color var(--rapido);
+}
+.detalles__quitar:hover { background: color-mix(in srgb, var(--peligro) 18%, transparent); color: var(--peligro); }
+.detalles__selector { display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.detalles__equipo { max-height: 260px; overflow-y: auto; }
+.checklist li.pendiente { opacity: 0.6; }

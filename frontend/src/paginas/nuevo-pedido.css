@@ -40,43 +40,6 @@
 .nuevo__ancho { grid-column: 1 / -1; }
 .entrada--grande { height: 52px; font-size: 18px; font-weight: 600; }
 
-.nuevo__vin { position: relative; }
-.nuevo__vin .entrada { padding-right: 64px; font-size: 16px; }
-.nuevo__vin-cuenta {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--texto-3);
-}
-.nuevo__vin.ok .entrada { border-color: var(--exito); }
-.nuevo__vin.ok .nuevo__vin-cuenta { color: var(--exito); }
-.nuevo__vin.mal .nuevo__vin-cuenta { color: var(--peligro); }
-
-.nuevo__vin-cajas { display: grid; grid-template-columns: repeat(17, 1fr); gap: 3px; }
-.nuevo__vin-cajas span {
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 6px;
-  font-family: var(--fuente-mono);
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--campo);
-  border: 1px solid var(--borde);
-  transition: all var(--rapido) var(--rebote);
-}
-.nuevo__vin-cajas span.lleno {
-  color: var(--primario);
-  border-color: color-mix(in srgb, var(--primario) 50%, transparent);
-  background: color-mix(in srgb, var(--primario) 12%, transparent);
-  transform: translateY(-1px);
-}
-/* separamos visualmente las 3 partes del VIN: fabricante (3), descripcion (6), serie (8) */
-.nuevo__vin-cajas span:nth-child(3), .nuevo__vin-cajas span:nth-child(9) { margin-right: 6px; }
-
 .nuevo__archivos {
   list-style: none;
   margin: 0;
@@ -182,5 +145,48 @@
 @media (max-width: 640px) {
   .nuevo__rejilla { grid-template-columns: 1fr; }
   .nuevo__bloque { padding: 18px 16px; }
-  .nuevo__vin-cajas { display: none; }
+}
+
+/* opciones grandes tipo tarjeta (tipo de vidrio, Drive) */
+.nuevo__opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.nuevo__opcion {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1.5px solid var(--borde);
+  background: var(--campo);
+  text-align: left;
+  transition: border-color var(--rapido), background var(--rapido), transform var(--rapido) var(--suave);
+}
+.nuevo__opcion:hover { border-color: var(--borde-fuerte); }
+.nuevo__opcion:active { transform: scale(0.98); }
+.nuevo__opcion.activa {
+  border-color: var(--primario);
+  background: color-mix(in srgb, var(--primario) 12%, transparent);
+  box-shadow: 0 8px 24px -14px var(--primario);
+}
+.nuevo__opcion-icono {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--texto-2);
+  background: var(--vidrio);
+  transition: all var(--rapido);
+}
+.nuevo__opcion.activa .nuevo__opcion-icono { color: #fff; background: var(--prisma-frio); }
+.nuevo__opcion-textos { display: flex; flex-direction: column; }
+.nuevo__opcion-textos strong { font-size: 15px; }
+.nuevo__opcion-textos span { font-size: 13px; color: var(--texto-3); }
+.nuevo__opciones--chicas .nuevo__opcion { padding: 10px 14px; }
+.nuevo__opciones--chicas .nuevo__opcion-icono { width: 34px; height: 34px; }
+
+select.entrada { appearance: auto; cursor: pointer; }
+
+@media (max-width: 640px) {
+  .nuevo__opciones { grid-template-columns: 1fr; }
 }

@@ -32,12 +32,18 @@ class Pedido(ConFechas, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     codigo: Mapped[str] = mapped_column(String(20), unique=True)  # PED-2026-0001
-    vehiculo: Mapped[str] = mapped_column(Unicode(120))
-    modelo: Mapped[str | None] = mapped_column(Unicode(120))
+    marca: Mapped[str] = mapped_column(Unicode(80))
+    modelo: Mapped[str] = mapped_column(Unicode(120))
+    version_vehiculo: Mapped[str | None] = mapped_column(Unicode(120))  # "version" ya es el control de concurrencia
+    plataforma: Mapped[str | None] = mapped_column(Unicode(80))  # generacion de plataforma o codigo de modelo
     anio: Mapped[int | None] = mapped_column(Integer)
-    vin: Mapped[str | None] = mapped_column(String(17))
-    cliente: Mapped[str | None] = mapped_column(Unicode(150))
+    # texto libre y sin limite: a veces pegan varios VIN o traen notas
+    vin: Mapped[str] = mapped_column(UnicodeText)
+    mercado: Mapped[str] = mapped_column(Unicode(40))  # opciones en CONFIGURACION "pedido.mercados"
+    tipo_vidrio: Mapped[str] = mapped_column(String(10), default="original")  # original|3d
+    info_en_drive: Mapped[bool | None] = mapped_column(Boolean)  # solo aplica si es 3d
     descripcion: Mapped[str | None] = mapped_column(UnicodeText)
+    # el comercial ya no los llena; quedan para que el equipo interno los use si quiere
     prioridad: Mapped[str] = mapped_column(String(10), default="media")  # baja|media|alta|urgente
     fecha_requerida: Mapped[date | None] = mapped_column(Date)
 
@@ -77,8 +83,9 @@ class PedidoPieza(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     pedido_id: Mapped[int] = mapped_column(ForeignKey("PEDIDOS.id", ondelete="CASCADE"), index=True)
+    codigo: Mapped[str | None] = mapped_column(String(3))  # codigo AGP de la pieza (000 = Parabrisas...)
     nombre: Mapped[str] = mapped_column(Unicode(150))
-    cantidad: Mapped[int] = mapped_column(Integer, default=1)
+    cantidad: Mapped[int] = mapped_column(Integer, default=1)  # ya no se pide, queda en 1
     observacion: Mapped[str | None] = mapped_column(Unicode(500))
     orden: Mapped[int] = mapped_column(Integer, default=0)
 

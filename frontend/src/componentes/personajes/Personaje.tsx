@@ -20,7 +20,7 @@ interface Props {
 }
 
 export const PALETA: Record<TipoPersonaje, { claro: string; oscuro: string; nombre: string; rol: string }> = {
-  vidrito: { claro: '#9CC0FF', oscuro: '#5B6CFF', nombre: 'Vidrito', rol: 'El de siempre' },
+  vidrito: { claro: '#B4E3EE', oscuro: '#3E97B5', nombre: 'Vidrito', rol: 'El de siempre' },  // colores AGP
   vendedora: { claro: '#7DF2CB', oscuro: '#16B386', nombre: 'Vendi', rol: 'Comercial' },
   trazos: { claro: '#D2B8FF', oscuro: '#7C5BFF', nombre: 'Trazos', rol: 'Dibujante' },
   tuerca: { claro: '#FFBE98', oscuro: '#FF5E8A', nombre: 'Tuerca', rol: 'Técnico' },
@@ -288,7 +288,7 @@ function Accesorio({ personaje, tapado }: { personaje: TipoPersonaje; tapado: bo
       // antena con destello
       return (
         <g>
-          <path d="M60 24 v-12" stroke="#5B6CFF" strokeWidth="3" strokeLinecap="round" />
+          <path d="M60 24 v-12" stroke="#3E97B5" strokeWidth="3" strokeLinecap="round" />
           <motion.path
             d="M60 0 l3 6 6 3 -6 3 -3 6 -3 -6 -6 -3 6 -3 z"
             fill="#FFE59A"

@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import case, func, select, update
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session, aliased, lazyload
 from sqlalchemy.orm.attributes import set_committed_value
 
 from app.core.eventos import anotar_evento
@@ -17,9 +17,10 @@ from app.modulos.chat.model import Mensaje
 from app.modulos.notificaciones.service import registrar_evento, usuarios_con_permiso
 from app.modulos.pedidos.model import SEQ_PEDIDOS, ChecklistItem, Pedido, PedidoMiembro, PedidoPieza
 from app.modulos.pedidos.schemas import (
-    ChecklistOut, MoverIn, PedidoCrear, PedidoDetalle, PedidoEditar, PedidoTarjeta, PiezaOut,
+    ChecklistOut, MoverIn, PedidoCrear, PedidoDetalle, PedidoEditar, PedidoTarjeta, PiezaIn, PiezaOut,
 )
-from app.modulos.tablero.model import Columna, Configuracion, Etiqueta
+from app.modulos.tablero.catalogos import catalogo_piezas, mercados, valor_config
+from app.modulos.tablero.model import Columna, Etiqueta
 from app.modulos.usuarios.model import Usuario
 
 HUECO = 1024  # distancia entre posiciones, ver mover()
@@ -34,6 +35,20 @@ def _ahora() -> datetime:
 def obtener(db: Session, pedido_id: int) -> Pedido:
     pedido = db.get(Pedido, pedido_id)
     if not pedido or pedido.eliminado:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ese pedido no existe o fue eliminado")
+    return pedido
+
+
+def obtener_para_avisos(db: Session, pedido_id: int) -> Pedido:
+    """El pedido con solo lo necesario para saber a quien avisar (creador y
+    miembros). Las piezas, etiquetas y checklist quedan para cargarse solo si
+    alguien las pide (por ejemplo el correo). El chat lo usa en cada mensaje."""
+    pedido = db.scalar(
+        select(Pedido)
+        .options(lazyload(Pedido.piezas), lazyload(Pedido.etiquetas), lazyload(Pedido.checklist))
+        .where(Pedido.id == pedido_id, Pedido.eliminado == False)  # noqa: E712
+    )
+    if not pedido:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ese pedido no existe o fue eliminado")
     return pedido
 
@@ -81,7 +96,35 @@ def _validar_etiquetas(db: Session, ids: list[int]) -> list[Etiqueta]:
 
 
 def _resumen_vehiculo(p: Pedido) -> str:
-    return " ".join(str(x) for x in (p.vehiculo, p.modelo, p.anio) if x)
+    return " ".join(str(x) for x in (p.marca, p.modelo, p.version_vehiculo) if x)
+
+
+def _validar_mercado(db: Session, mercado: str) -> None:
+    if mercado not in mercados(db):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Mercado no válido. Opciones: {', '.join(mercados(db))}")
+
+
+def _armar_piezas(db: Session, piezas: list[PiezaIn]) -> list[PedidoPieza]:
+    """Si la pieza trae codigo, el nombre sale del catalogo (asi todos escriben
+    igual "Lateral Delantero Izquierdo"). Si escriben el nombre exacto de una
+    pieza del catalogo, se le pone su codigo."""
+    catalogo = catalogo_piezas(db)
+    por_nombre = {c.nombre.lower(): c for c in catalogo.values()}
+    resultado = []
+    for i, pz in enumerate(piezas):
+        if pz.codigo:
+            item = catalogo.get(pz.codigo)
+            if not item:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"El código de pieza {pz.codigo} no existe en el catálogo")
+            codigo, nombre = item.codigo, item.nombre
+        else:
+            nombre = " ".join(pz.nombre.split())
+            if not nombre:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cada pieza necesita un código o un nombre")
+            item = por_nombre.get(nombre.lower())
+            codigo = item.codigo if item else None
+        resultado.append(PedidoPieza(codigo=codigo, nombre=nombre, observacion=pz.observacion or None, orden=i))
+    return resultado
 
 
 # Lectura
@@ -124,7 +167,7 @@ def a_tarjetas(db: Session, pedidos: list[Pedido]) -> list[PedidoTarjeta]:
     tarjetas = []
     for p in pedidos:
         t = PedidoTarjeta.model_validate(p)
-        t.total_piezas = sum(pz.cantidad for pz in p.piezas)
+        t.total_piezas = len(p.piezas)
         t.checklist_total = len(p.checklist)
         t.checklist_hechos = sum(1 for c in p.checklist if c.hecho)
         n_msj, n_adj, blob_portada = conteos.get(p.id, (0, 0, None))
@@ -141,7 +184,8 @@ def a_detalle(db: Session, pedido: Pedido, usuario: Usuario) -> PedidoDetalle:
     return PedidoDetalle(
         **tarjeta.model_dump(),
         vin=pedido.vin,
-        cliente=pedido.cliente,
+        plataforma=pedido.plataforma,
+        info_en_drive=pedido.info_en_drive,
         descripcion=pedido.descripcion,
         piezas=[PiezaOut.model_validate(pz) for pz in pedido.piezas],
         checklist=[ChecklistOut.model_validate(c) for c in pedido.checklist],
@@ -155,8 +199,7 @@ def a_detalle(db: Session, pedido: Pedido, usuario: Usuario) -> PedidoDetalle:
 def pedidos_del_tablero(db: Session) -> list[Pedido]:
     """Todo lo activo, menos lo terminado hace mas de N dias (configurable),
     para que la columna final no se vuelva un cementerio infinito."""
-    fila = db.get(Configuracion, "tablero.dias_visibles_terminados")
-    dias = int(fila.valor) if fila else 30
+    dias = int(valor_config(db, "tablero.dias_visibles_terminados", "30"))
     limite = _ahora() - timedelta(days=dias)
     return list(db.scalars(
         select(Pedido)
@@ -173,6 +216,8 @@ def pedidos_del_tablero(db: Session) -> list[Pedido]:
 def crear(db: Session, datos: PedidoCrear, usuario: Usuario) -> Pedido:
     asignados = _validar_usuarios(db, datos.asignados)
     etiquetas = _validar_etiquetas(db, datos.etiquetas)
+    _validar_mercado(db, datos.mercado)
+    piezas = _armar_piezas(db, datos.piezas)
     col = columna_inicial(db)
 
     consecutivo = db.execute(SEQ_PEDIDOS.next_value()).scalar_one()
@@ -186,7 +231,7 @@ def crear(db: Session, datos: PedidoCrear, usuario: Usuario) -> Pedido:
         posicion=(arriba - HUECO) if arriba is not None else HUECO,  # lo nuevo entra arriba
         creado_por_id=usuario.id,
         creado_por=usuario,
-        piezas=[PedidoPieza(**pz.model_dump(), orden=i) for i, pz in enumerate(datos.piezas)],
+        piezas=piezas,
         miembros=[PedidoMiembro(usuario=u, usuario_id=u.id, tipo="asignado") for u in asignados],
         etiquetas=etiquetas,
     )
@@ -198,7 +243,8 @@ def crear(db: Session, datos: PedidoCrear, usuario: Usuario) -> Pedido:
     registrar_evento(
         db, pedido=pedido, actor=usuario, accion="pedido.creado",
         titulo=f"Nuevo pedido: {_resumen_vehiculo(pedido)}",
-        cuerpo=f"{usuario.nombre} creó un pedido con {len(pedido.piezas)} pieza(s). Prioridad {NOMBRE_PRIORIDAD[pedido.prioridad]}.",
+        cuerpo=(f"{usuario.nombre} creó un pedido con {len(pedido.piezas)} pieza(s). "
+                f"Mercado {pedido.mercado} · vidrio {'3D' if pedido.tipo_vidrio == '3d' else 'original'}."),
         para=interesados,
     )
     anotar_evento(db, "tablero.cambio", pedido_id=pedido.id, motivo="creado", por=usuario.id)
@@ -215,13 +261,15 @@ def editar(db: Session, pedido: Pedido, datos: PedidoEditar, usuario: Usuario) -
             "Alguien más modificó este pedido mientras lo editabas. Recarga para ver los cambios.",
         )
 
+    if datos.mercado is not None:
+        _validar_mercado(db, datos.mercado)
     cambios = datos.model_dump(exclude_unset=True, exclude={"version", "piezas", "etiquetas", "datos_extra"})
     antes = {k: getattr(pedido, k) for k in cambios}
     for campo, valor in cambios.items():
         setattr(pedido, campo, valor)
 
     if datos.piezas is not None:
-        pedido.piezas = [PedidoPieza(**pz.model_dump(), orden=i) for i, pz in enumerate(datos.piezas)]
+        pedido.piezas = _armar_piezas(db, datos.piezas)
         cambios["piezas"] = len(datos.piezas)
     if datos.etiquetas is not None:
         pedido.etiquetas = _validar_etiquetas(db, datos.etiquetas)

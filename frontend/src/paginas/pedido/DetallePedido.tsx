@@ -5,8 +5,8 @@ import { Bell, BellOff, History, Info, MessagesSquare, Paperclip, Trash2, X } fr
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { ErrorApi } from '@/api/cliente'
-import { notificaciones, pedidos } from '@/api/endpoints'
-import type { Columna, Etiqueta, PedidoDetalle } from '@/api/tipos'
+import { chat, notificaciones, pedidos } from '@/api/endpoints'
+import type { Columna, Etiqueta, PedidoDetalle, Tablero, Tarjeta } from '@/api/tipos'
 import { useAuth } from '@/auth/AuthContext'
 import { Avatar } from '@/componentes/Avatar'
 import { Panel } from '@/componentes/Panel'
@@ -40,7 +40,18 @@ function Contenido({ pedidoId, alCerrar, columnas, etiquetas }: Props & { pedido
   const { usuario, puede } = useAuth()
   const qc = useQueryClient()
   const [pestana, setPestana] = useState<Pestana>('detalles')
-  const { data: pedido, error } = useQuery({ queryKey: ['pedido', pedidoId], queryFn: () => pedidos.ver(pedidoId) })
+  // Mientras llega el detalle, el panel abre YA con lo que la tarjeta del tablero
+  // ya sabe (codigo, marca, columna...). Eso es "placeholderData".
+  const { data: pedido, error, isPlaceholderData } = useQuery({
+    queryKey: ['pedido', pedidoId],
+    queryFn: () => pedidos.ver(pedidoId),
+    placeholderData: () => desdeTarjeta(qc.getQueryData<Tablero>(['tablero'])?.pedidos.find((p) => p.id === pedidoId)),
+  })
+
+  // los mensajes se piden de una vez, asi la pestaña Chat ya esta lista al tocarla
+  useEffect(() => {
+    qc.prefetchQuery({ queryKey: ['mensajes', pedidoId], queryFn: () => chat.mensajes(pedidoId), staleTime: 10000 })
+  }, [pedidoId, qc])
 
   // al abrir el pedido, sus notificaciones quedan leidas
   useEffect(() => {
@@ -57,7 +68,8 @@ function Contenido({ pedidoId, alCerrar, columnas, etiquetas }: Props & { pedido
       if (columnas.find((c) => c.id === columnaId)?.es_final) celebrar()
       return { antes }
     },
-    onSuccess: (p) => qc.setQueryData(['pedido', pedidoId], p),
+    // solo su pedazo (columna): pisar el pedido entero borraria cambios de checklist o responsables en camino
+    onSuccess: (p) => qc.setQueryData<PedidoDetalle>(['pedido', pedidoId], (actual) => actual && { ...actual, columna_id: p.columna_id, posicion: p.posicion, completado_en: p.completado_en }),
     onError: (e, _columna, ctx) => {
       if (ctx?.antes) qc.setQueryData(['pedido', pedidoId], ctx.antes)
       toast.error(e instanceof ErrorApi ? e.message : 'No se pudo mover')
@@ -110,10 +122,14 @@ function Contenido({ pedidoId, alCerrar, columnas, etiquetas }: Props & { pedido
       <header className="detalle__cabeza">
         <div className="detalle__fila-sup">
           <span className="chip mono">{pedido.codigo}</span>
-          <span className="chip detalle__prioridad">
-            <span className="punto" style={{ background: 'var(--prioridad)' }} />
-            {NOMBRE_PRIORIDAD[pedido.prioridad]}
-          </span>
+          <span className="chip">{pedido.mercado}</span>
+          {pedido.tipo_vidrio === '3d' && <span className="chip detalle__3d">3D</span>}
+          {pedido.prioridad !== 'media' && (
+            <span className="chip detalle__prioridad">
+              <span className="punto" style={{ background: 'var(--prioridad)' }} />
+              {NOMBRE_PRIORIDAD[pedido.prioridad]}
+            </span>
+          )}
           <div className="detalle__acciones">
             {puedeAlternarSeguir && (
               <button className="btn btn-fantasma btn-chico" onClick={() => seguir.mutate()} disabled={seguir.isPending}>
@@ -134,7 +150,7 @@ function Contenido({ pedidoId, alCerrar, columnas, etiquetas }: Props & { pedido
         </div>
 
         <h2 className="detalle__titulo">
-          {pedido.vehiculo} {pedido.modelo && <span>{pedido.modelo}</span>} {pedido.anio && <small>{pedido.anio}</small>}
+          {pedido.marca} <span>{pedido.modelo}</span> {pedido.version_vehiculo && <small>{pedido.version_vehiculo}</small>} {pedido.anio && <small>{pedido.anio}</small>}
         </h2>
         <div className="detalle__meta">
           <Avatar usuario={pedido.creado_por} tamano={22} />
@@ -175,11 +191,28 @@ function Contenido({ pedidoId, alCerrar, columnas, etiquetas }: Props & { pedido
       </header>
 
       <div className="detalle__cuerpo">
-        {pestana === 'detalles' && <PestanaDetalles pedido={pedido} etiquetas={etiquetas} />}
+        {pestana === 'detalles' && (isPlaceholderData ? <CargandoDetalles /> : <PestanaDetalles pedido={pedido} etiquetas={etiquetas} />)}
         {pestana === 'chat' && <PestanaChat pedido={pedido} />}
         {pestana === 'archivos' && <PestanaArchivos pedido={pedido} />}
         {pestana === 'historial' && <PestanaHistorial pedidoId={pedido.id} />}
       </div>
+    </div>
+  )
+}
+
+/** Arma un "detalle" provisional con los datos de la tarjeta (lo que falta va vacio). */
+function desdeTarjeta(t?: Tarjeta): PedidoDetalle | undefined {
+  if (!t) return undefined
+  return {
+    ...t, vin: '', plataforma: null, info_en_drive: null, descripcion: null,
+    piezas: [], checklist: [], datos_extra: null, actualizado_en: t.creado_en, puedo_editar: false,
+  }
+}
+
+function CargandoDetalles() {
+  return (
+    <div className="detalles">
+      {[150, 120, 90].map((alto, i) => <div key={i} className="esqueleto__tarjeta" style={{ height: alto }} />)}
     </div>
   )
 }

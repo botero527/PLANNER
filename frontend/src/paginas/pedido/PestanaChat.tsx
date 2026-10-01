@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { ErrorApi } from '@/api/cliente'
 import { adjuntos, chat, usuarios } from '@/api/endpoints'
 import { useEvento, useTiempoReal } from '@/api/tiempoReal'
+import { refrescarPronto, reemplazarMensaje, sumarMensajes, type MensajeLocal } from '@/api/cacheLocal'
 import type { Mensaje, PedidoDetalle, UsuarioMini } from '@/api/tipos'
 import { useAuth } from '@/auth/AuthContext'
 import { Avatar } from '@/componentes/Avatar'
@@ -14,6 +15,12 @@ import { hora, primerNombre, tamanoArchivo } from '@/utiles/formato'
 
 // mensajes seguidos del mismo autor en menos de 5 min se agrupan (como Teams)
 const VENTANA_GRUPO = 5 * 60 * 1000
+
+// "miércoles, 30 de septiembre" -> "Miércoles, 30 de septiembre" (solo la primera letra)
+function diaBonito(iso: string) {
+  const t = new Date(iso).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
 
 export function PestanaChat({ pedido }: { pedido: PedidoDetalle }) {
   const { usuario, puede } = useAuth()
@@ -55,36 +62,66 @@ export function PestanaChat({ pedido }: { pedido: PedidoDetalle }) {
     return () => window.clearInterval(t)
   }, [])
 
-  const refrescar = () => {
-    qc.invalidateQueries({ queryKey: ['mensajes', pedido.id] })
-    qc.invalidateQueries({ queryKey: ['pedido', pedido.id] })
-  }
-
-  // Cada envio lleva SUS datos (no lee el estado del formulario), asi la caja se
-  // limpia al instante y uno puede ir escribiendo el siguiente mientras este viaja.
+  // Optimista: el mensaje se pinta YA con un id temporal (negativo) y marcado
+  // "pendiente". Cuando el servidor confirma, el real reemplaza al temporal.
+  // Asi el chat se siente instantaneo aunque Azure se demore.
   const enviar = useMutation({
     // scope: los envios del mismo chat van en fila, uno detras del otro, asi
     // nunca llegan en desorden al servidor aunque se manden muy seguido
     scope: { id: `chat-${pedido.id}` },
-    mutationFn: async (v: { texto: string; archivos: File[]; respuestaA: number | null; editandoId: number | null }) => {
-      const cuerpo = v.texto || (v.archivos.length ? `📎 ${v.archivos.length === 1 ? v.archivos[0].name : `${v.archivos.length} archivos`}` : '')
-      if (v.editandoId) return chat.editar(v.editandoId, cuerpo)
-      const m = await chat.enviar(pedido.id, cuerpo, v.respuestaA)
+    mutationFn: async (v: { cuerpo: string; archivos: File[]; respuestaA: number | null; editandoId: number | null; tempId: number }) => {
+      if (v.editandoId) return chat.editar(v.editandoId, v.cuerpo)
+      const m = await chat.enviar(pedido.id, v.cuerpo, v.respuestaA)
       if (v.archivos.length) await adjuntos.subir(pedido.id, v.archivos, m.id)
       return m
     },
-    onSuccess: refrescar,
+    onMutate: async (v) => {
+      if (!usuario) return
+      // si la lista de mensajes se esta pidiendo en este momento, la cancelamos:
+      // si no, al llegar pisaria el mensaje temporal y se perderia de la pantalla
+      await qc.cancelQueries({ queryKey: ['mensajes', pedido.id] })
+      if (v.editandoId) {
+        qc.setQueryData<MensajeLocal[]>(['mensajes', pedido.id], (l) => l?.map((x) => (x.id === v.editandoId ? { ...x, texto: v.cuerpo } : x)))
+        return
+      }
+      const temporal: MensajeLocal = {
+        id: v.tempId, pedido_id: pedido.id, texto: v.cuerpo, respuesta_a_id: v.respuestaA,
+        autor: { id: usuario.id, nombre: usuario.nombre, usuario: usuario.usuario, personaje: usuario.personaje },
+        editado_en: null, eliminado: false, creado_en: new Date().toISOString(), adjuntos: [], pendiente: true,
+      }
+      qc.setQueryData<MensajeLocal[]>(['mensajes', pedido.id], (l) => [...(l ?? []), temporal])
+      sumarMensajes(qc, pedido.id, 1)
+    },
+    onSuccess: (m, v) => {
+      if (v.editandoId) return reemplazarMensaje(qc, m)
+      qc.setQueryData<MensajeLocal[]>(['mensajes', pedido.id], (l) => {
+        if (!l) return l
+        // si el WebSocket llego primero, el real ya esta: solo se quita el temporal
+        if (l.some((x) => x.id === m.id)) return l.filter((x) => x.id !== v.tempId)
+        return l.map((x) => (x.id === v.tempId ? m : x))
+      })
+      if (v.archivos.length) qc.invalidateQueries({ queryKey: ['mensajes', pedido.id] })
+    },
     onError: (e, v) => {
       toast.error(e instanceof ErrorApi ? e.message : 'No se pudo enviar')
+      if (!v.editandoId) {
+        qc.setQueryData<MensajeLocal[]>(['mensajes', pedido.id], (l) => l?.filter((x) => x.id !== v.tempId))
+        sumarMensajes(qc, pedido.id, -1)
+      } else {
+        qc.invalidateQueries({ queryKey: ['mensajes', pedido.id] })
+      }
       // devolvemos el texto para que no se pierda lo que la persona escribio
-      setTexto((actual) => actual || v.texto)
+      setTexto((actual) => actual || v.cuerpo)
     },
+    // al final, UNA recarga agrupada (aunque se hayan mandado 5 seguidos) deja todo exacto
+    onSettled: () => refrescarPronto(qc, ['mensajes', pedido.id], 800),
   })
 
   const mandar = () => {
     const limpio = texto.trim()
     if (!limpio && !archivos.length) return
-    enviar.mutate({ texto: limpio, archivos, respuestaA: respondiendo?.id ?? null, editandoId: editando?.id ?? null })
+    const cuerpo = limpio || `📎 ${archivos.length === 1 ? archivos[0].name : `${archivos.length} archivos`}`
+    enviar.mutate({ cuerpo, archivos, respuestaA: respondiendo?.id ?? null, editandoId: editando?.id ?? null, tempId: -Date.now() })
     setTexto('')
     setArchivos([])
     setRespondiendo(null)
@@ -92,7 +129,11 @@ export function PestanaChat({ pedido }: { pedido: PedidoDetalle }) {
     setMencion(null)
   }
 
-  const borrar = useMutation({ mutationFn: (id: number) => chat.eliminar(id), onSuccess: refrescar })
+  const borrar = useMutation({
+    mutationFn: (id: number) => chat.eliminar(id),
+    onMutate: (id) => qc.setQueryData<MensajeLocal[]>(['mensajes', pedido.id], (l) => l?.map((x) => (x.id === id ? { ...x, eliminado: true } : x))),
+    onError: () => qc.invalidateQueries({ queryKey: ['mensajes', pedido.id] }),
+  })
 
   const alEscribir = (valor: string) => {
     setTexto(valor)
@@ -134,7 +175,7 @@ export function PestanaChat({ pedido }: { pedido: PedidoDetalle }) {
             const nuevoDia = !anterior || new Date(anterior.creado_en).toDateString() !== new Date(m.creado_en).toDateString()
             return (
               <Fragment key={m.id}>
-                {nuevoDia && <div className="chat__dia"><span>{new Date(m.creado_en).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>}
+                {nuevoDia && <div className="chat__dia"><span>{diaBonito(m.creado_en)}</span></div>}
                 <Burbuja
                   mensaje={m}
                   mio={m.autor.id === usuario?.id}
@@ -242,7 +283,7 @@ interface PropsBurbuja {
 function Burbuja({ mensaje: m, mio, agrupado, original, alResponder, alEditar, alBorrar, puedeBorrarAjeno }: PropsBurbuja) {
   return (
     <motion.div
-      className={`msj ${mio ? 'msj--mio' : ''} ${agrupado ? 'msj--agrupado' : ''}`}
+      className={`msj ${mio ? 'msj--mio' : ''} ${agrupado ? 'msj--agrupado' : ''} ${(m as MensajeLocal).pendiente ? 'msj--pendiente' : ''}`}
       initial={{ opacity: 0, y: 8, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
@@ -252,7 +293,7 @@ function Burbuja({ mensaje: m, mio, agrupado, original, alResponder, alEditar, a
         {!agrupado && (
           <div className="msj__cabeza">
             {!mio && <b>{m.autor.nombre}</b>}
-            <span>{hora(m.creado_en)}</span>
+            <span>{(m as MensajeLocal).pendiente ? 'enviando…' : hora(m.creado_en)}</span>
             {m.editado_en && !m.eliminado && <span>· editado</span>}
           </div>
         )}
@@ -274,7 +315,7 @@ function Burbuja({ mensaje: m, mio, agrupado, original, alResponder, alEditar, a
             </div>
           )}
         </div>
-        {!m.eliminado && (
+        {!m.eliminado && !(m as MensajeLocal).pendiente && (
           <div className="msj__acciones">
             <button onClick={alResponder} title="Responder"><CornerUpLeft size={14} /></button>
             {mio && <button onClick={alEditar} title="Editar"><Pencil size={14} /></button>}

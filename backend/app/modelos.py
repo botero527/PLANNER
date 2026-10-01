@@ -10,5 +10,5 @@ from app.modulos.notificaciones.model import CorreoCola, Notificacion  # noqa: F
 from app.modulos.pedidos.model import (  # noqa: F401
     ChecklistItem, Historial, Pedido, PedidoMiembro, PedidoPieza,
 )
-from app.modulos.tablero.model import Columna, Configuracion, Etiqueta  # noqa: F401
+from app.modulos.tablero.model import CatalogoPieza, Columna, Configuracion, Etiqueta  # noqa: F401
 from app.modulos.usuarios.model import Permiso, Rol, Usuario  # noqa: F401

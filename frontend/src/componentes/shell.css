@@ -62,7 +62,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--primario) 26%, transparent), color-mix(in srgb, #b06bff 16%, transparent));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primario) 26%, transparent), color-mix(in srgb, var(--agp-acero) 18%, transparent));
   border: 1px solid color-mix(in srgb, var(--primario) 35%, transparent);
 }
 

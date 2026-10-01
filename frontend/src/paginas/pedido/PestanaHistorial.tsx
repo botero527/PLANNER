@@ -18,8 +18,8 @@ const DESCRIPCION: Record<string, (d: Record<string, unknown> | null) => string>
 }
 
 const COLOR: Record<string, string> = {
-  'pedido.creado': 'var(--info)', 'pedido.movido': '#b06bff', 'pedido.completado': 'var(--exito)',
-  'pedido.asignado': 'var(--alerta)', 'adjunto.subido': '#3fd1ff', 'pedido.eliminado': 'var(--peligro)',
+  'pedido.creado': 'var(--info)', 'pedido.movido': 'var(--agp-acero)', 'pedido.completado': 'var(--exito)',
+  'pedido.asignado': 'var(--alerta)', 'adjunto.subido': 'var(--agp-cielo)', 'pedido.eliminado': 'var(--peligro)',
 }
 
 export function PestanaHistorial({ pedidoId }: { pedidoId: number }) {

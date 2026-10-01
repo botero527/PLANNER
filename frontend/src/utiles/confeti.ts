@@ -1,6 +1,7 @@
 import confetti from 'canvas-confetti'
 
-const COLORES = ['#7C8CFF', '#B06BFF', '#FF7AA8', '#FFC36B', '#2FCB8B', '#3FD1FF']
+// colores AGP: cielo, acero, carbón y blanco (como pedacitos de vidrio)
+const COLORES = ['#7ECEE0', '#3E97B5', '#9CC7D3', '#4A4A4D', '#FFFFFF', '#256F89']
 
 // Lluvia de vidrios de colores cuando se termina un pedido
 export function celebrar(origen?: { x: number; y: number }) {

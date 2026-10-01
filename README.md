@@ -10,14 +10,16 @@ Tablero tipo Microsoft Planner hecho a la medida de AGP: el **comercial** crea e
 |---|---|
 | **Login propio** | Usuario y contraseña (guardada en texto plano, decisión del equipo), la primera vez obliga a cambiarla, bloqueo tras 5 intentos fallidos |
 | **4 roles con permisos en BD** | admin, comercial, dibujante, técnico; qué puede cada uno vive en `PLN.ROLES_PERMISOS` |
-| **Formulario del comercial** | Vehículo, modelo, año, VIN validado, cliente, piezas, prioridad, fecha y archivos, con vista previa en vivo |
+| **Formulario del comercial** | Marca, modelo, versión, plataforma, año, VIN libre, mercado, vidrio original/3D (y si ya está en Drive), piezas por código AGP con simétrica automática, archivos; vista previa en vivo |
 | **Tablero kanban** | Arrastrar tarjetas, filtros, límite por columna (WIP), portada con la primera imagen |
 | **Detalle del pedido** | Datos editables con control de versiones, responsables, checklist, historial |
 | **Chat estilo Teams** | Respuestas, @menciones con autocompletado, "está escribiendo…", archivos, editar/borrar |
 | **Tiempo real** | WebSocket: todos ven los movimientos y mensajes al instante, y quién está en línea |
 | **Notificaciones** | Campanita en la app + cola de correos (simulados como `.eml` hasta que TI habilite Graph) |
 | **Archivos** | Azure Blob `saagpingenieria/planner-adjuntos`, privado, con links firmados que vencen |
+| **Catálogo de piezas** | Los códigos de Módulo 5 (`000` Parabrisas, `001`↔`002`…) en `PLN.CATALOGO_PIEZAS` |
 | **Personajes** | Vidrito, Vendi, Trazos, Tuerca y La Jefa: SVG animados, uno por rol |
+| **Colores AGP** | Carbón del logo + azul cielo `#7ECEE0` (el mismo de los otros sistemas AGP), tema oscuro y claro |
 
 ## Estructura
 
@@ -75,5 +77,5 @@ La API documentada (Swagger) queda en http://localhost:8010/docs.
 ## Documentación
 
 - [docs/arquitectura.md](docs/arquitectura.md): cómo encajan las piezas y por qué
-- [docs/base-de-datos.md](docs/base-de-datos.md): las 17 tablas y para qué es cada una
+- [docs/base-de-datos.md](docs/base-de-datos.md): las 18 tablas y para qué es cada una
 - [docs/correos-outlook.md](docs/correos-outlook.md): cómo activar los correos reales con TI

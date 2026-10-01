@@ -82,23 +82,38 @@ def test_flujo_completo(cliente, usuarios):
     com, dib, tec = (entrar(cliente, r) for r in ("comercial", "dibujante", "tecnico"))
 
     # 1. el comercial crea el pedido
+    vin_largo = "8AJBA3FS0R0123456 / 8AJBA3FS0R0123457 (dos unidades, llegan en octubre)"
     r = cliente.post("/api/pedidos", headers=com, json={
-        "vehiculo": "  Toyota   Hilux ", "modelo": "SRV", "anio": 2025, "vin": "8ajba3fs0r0123456",
-        "prioridad": "alta", "piezas": [{"nombre": "Parabrisas", "cantidad": 1}, {"nombre": "Puerta DI", "cantidad": 2}],
+        "marca": "  Toyota ", "modelo": "Hilux", "version_vehiculo": "SRV  4x4", "plataforma": "AN120",
+        "anio": 2025, "vin": vin_largo, "mercado": "LATAM", "tipo_vidrio": "original",
+        "piezas": [{"codigo": "0"}, {"codigo": "001"}, {"nombre": "Lateral Delantero Derecho"}, {"nombre": "Pieza rara a mano"}],
         "asignados": [usuarios["dibujante"]],
     })
     assert r.status_code == 201, r.text
     pedido = r.json()
     assert pedido["codigo"].startswith("PED-")
-    assert pedido["vehiculo"] == "Toyota Hilux"          # limpia espacios de mas
-    assert pedido["vin"] == "8AJBA3FS0R0123456"           # VIN en mayuscula
-    assert pedido["total_piezas"] == 3
-    assert pedido["creado_en"].endswith("Z")              # fecha sale en UTC
+    assert pedido["marca"] == "Toyota" and pedido["version_vehiculo"] == "SRV 4x4"  # limpia espacios de mas
+    assert pedido["vin"] == vin_largo                          # VIN libre, tal cual
+    assert pedido["total_piezas"] == 4
+    piezas = [(p["codigo"], p["nombre"]) for p in pedido["piezas"]]
+    assert piezas == [("000", "Parabrisas"), ("001", "Lateral Delantero Izquierdo"),
+                      ("002", "Lateral Delantero Derecho"),    # por nombre exacto le pone su codigo
+                      (None, "Pieza rara a mano")]            # fuera del catalogo: texto libre
+    assert pedido["creado_en"].endswith("Z")                  # fecha sale en UTC
     pid = pedido["id"]
 
-    # VIN invalido (tiene O) se rechaza
-    malo = cliente.post("/api/pedidos", headers=com, json={"vehiculo": "X", "vin": "8AJBA3FS0R012345O", "piezas": [{"nombre": "a"}]})
-    assert malo.status_code == 422
+    base = {"marca": "X", "modelo": "Y", "vin": "Z", "mercado": "USA", "piezas": [{"codigo": "000"}]}
+    # obligatorios y validaciones nuevas
+    assert cliente.post("/api/pedidos", headers=com, json={**base, "vin": ""}).status_code == 422
+    assert cliente.post("/api/pedidos", headers=com, json={**base, "mercado": "Marte"}).status_code == 400
+    assert cliente.post("/api/pedidos", headers=com, json={**base, "piezas": [{"codigo": "999"}]}).status_code == 400
+    assert cliente.post("/api/pedidos", headers=com, json={**base, "tipo_vidrio": "3d"}).status_code == 422  # falta Drive
+    r3d = cliente.post("/api/pedidos", headers=com, json={**base, "tipo_vidrio": "3d", "info_en_drive": True})
+    assert r3d.status_code == 201 and r3d.json()["info_en_drive"] is True
+
+    catalogos = cliente.get("/api/tablero/catalogos", headers=com).json()
+    assert "México" in catalogos["mercados"]
+    assert next(p for p in catalogos["piezas"] if p["codigo"] == "001")["simetrica"] == "002"
 
     # 2. el comercial NO puede mover tarjetas
     with SesionLocal() as db:
@@ -188,7 +203,7 @@ def test_mover_muchas_veces_renumera_bien(cliente, usuarios):
 
     ids = []
     for i in range(3):
-        r = cliente.post("/api/pedidos", headers=com, json={"vehiculo": f"Orden {i}", "piezas": [{"nombre": "p"}]})
+        r = cliente.post("/api/pedidos", headers=com, json={"marca": f"Orden {i}", "modelo": "m", "vin": "v", "mercado": "USA", "piezas": [{"codigo": "000"}]})
         ids.append(r.json()["id"])
     for pid in ids:
         cliente.post(f"/api/pedidos/{pid}/mover", headers=dib, json={"columna_id": destino, "indice": 999})

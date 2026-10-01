@@ -12,6 +12,9 @@ export function AvisosEnVivo() {
     if (!usuario || e.tipo !== 'notificacion') return
     if (!e.usuarios.includes(usuario.id)) return
     if (e.accion === 'pedido.completado') celebrar()
+    // si ya tengo abierto ese pedido, los mensajes del chat los estoy viendo: sin toast
+    const abierto = new URLSearchParams(window.location.search).get('pedido') === String(e.pedido_id)
+    if (abierto && e.accion.startsWith('chat.')) return
 
     toast.custom(() => (
       <div className="aviso-vivo vidrio">

@@ -17,15 +17,14 @@ from app.core.eventos import anotar_evento
 from app.modulos.notificaciones.model import CorreoCola, Notificacion
 from app.modulos.notificaciones.plantillas import correo_evento
 from app.modulos.pedidos.model import Historial, Pedido
-from app.modulos.tablero.model import Configuracion
+from app.modulos.tablero.catalogos import valor_config
 from app.modulos.usuarios.model import Permiso, Rol, Usuario, roles_permisos
 
 EVENTOS_CON_CORREO_DEFECTO = "pedido.creado,pedido.movido,pedido.asignado,pedido.completado,chat.mencion"
 
 
 def eventos_con_correo(db: Session) -> set[str]:
-    fila = db.get(Configuracion, "correo.eventos")
-    valor = fila.valor if fila else EVENTOS_CON_CORREO_DEFECTO
+    valor = valor_config(db, "correo.eventos", EVENTOS_CON_CORREO_DEFECTO)
     return {e.strip() for e in valor.split(",") if e.strip()}
 
 

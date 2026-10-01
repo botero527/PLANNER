@@ -6,6 +6,7 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ErrorApi } from '@/api/cliente'
 import { useAuth } from '@/auth/AuthContext'
+import { LogoAGP } from '@/componentes/LogoAGP'
 import { Personaje, type Expresion } from '@/componentes/personajes/Personaje'
 import { rutaInicio } from '@/utiles/rutas'
 import './login.css'
@@ -49,8 +50,7 @@ export default function Login() {
     <div className="login">
       <section className="login__escena" aria-hidden="true">
         <motion.div className="login__marca" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <span className="login__logo">AGP</span>
-          <span className="login__producto">Planner</span>
+          <LogoAGP alto={50} />
         </motion.div>
 
         <div className="login__protagonista">

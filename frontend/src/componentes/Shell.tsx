@@ -8,6 +8,7 @@ import { useAuth } from '@/auth/AuthContext'
 import { Avatar, PilaAvatares } from './Avatar'
 import { Campana } from './Campana'
 import { AvisosEnVivo } from './AvisosEnVivo'
+import { LogoAGP } from './LogoAGP'
 import { Personaje } from './personajes/Personaje'
 import './shell.css'
 
@@ -58,8 +59,7 @@ export function Shell() {
     <div className="shell">
       <aside className="shell__menu vidrio">
         <div className="shell__marca">
-          <span className="shell__logo">AGP</span>
-          <span className="shell__producto">Planner</span>
+          <LogoAGP alto={38} />
         </div>
 
         <nav className="shell__nav">

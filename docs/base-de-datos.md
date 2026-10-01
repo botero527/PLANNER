@@ -10,21 +10,22 @@ Servidor `agpcolombia.database.windows.net`, base `AGP_Ingenieria`, **schema `PL
 | `ROLES` | admin, comercial, dibujante, tecnico (con color para la interfaz) |
 | `PERMISOS` | Acciones sueltas: `pedido.crear`, `tarjeta.mover`, `usuario.administrar`… |
 | `ROLES_PERMISOS` | Qué puede hacer cada rol. Se cambia aquí sin tocar código |
-| `USUARIOS` | Usuario de login, nombre, correo, rol, personaje, hash de la clave, si recibe correos, `version_sesion` (al subirla se cierran todas sus sesiones) |
+| `USUARIOS` | Usuario de login, nombre, correo, rol, personaje, clave (texto plano, decisión del equipo), si recibe correos, `version_sesion` (al subirla se cierran todas sus sesiones) |
 
 ### El tablero (configurable)
 | Tabla | Para qué |
 |---|---|
 | `COLUMNAS` | Los estados del proceso: orden, color, ícono, límite WIP, cuál es la inicial y cuál la final |
 | `ETIQUETAS` | Etiquetas de colores (Urgente, Blindado…) |
-| `CONFIGURACION` | Parámetros clave/valor: qué eventos mandan correo, días visibles de los terminados |
+| `CONFIGURACION` | Parámetros clave/valor: qué eventos mandan correo, días visibles de los terminados, opciones de **mercado** (`pedido.mercados`) |
+| `CATALOGO_PIEZAS` | Códigos de pieza AGP (los de Módulo 5): código, nombre y su **simétrica** (001↔002). Se amplía con filas nuevas |
 
 ### El pedido
 | Tabla | Para qué |
 |---|---|
-| `PEDIDOS` | La tarjeta: código `PED-AAAA-NNNN`, vehículo, modelo, año, VIN, cliente, prioridad, fecha requerida, columna, posición, `version`, `datos_extra` (JSON para campos que aún no existen) |
+| `PEDIDOS` | La tarjeta: código `PED-AAAA-NNNN`, marca, modelo, `version_vehiculo`, plataforma, año, VIN (texto libre sin límite), mercado, `tipo_vidrio` (original/3d), `info_en_drive`, prioridad y fecha (solo uso interno), columna, posición, `version` (control de concurrencia), `datos_extra` |
 | `SEQ_PEDIDOS` *(secuencia)* | Da el consecutivo sin repetirse aunque dos pedidos entren al mismo tiempo |
-| `PEDIDO_PIEZAS` | Las piezas del pedido: nombre, cantidad, observación |
+| `PEDIDO_PIEZAS` | Las piezas del pedido: código AGP (si es del catálogo), nombre, observación. Si llega el código, el nombre lo pone el backend desde el catálogo |
 | `PEDIDO_MIEMBROS` | Quién está asignado o sigue el pedido |
 | `PEDIDO_ETIQUETAS` | Qué etiquetas tiene cada pedido |
 | `CHECKLIST` | Pasos a chulear dentro del pedido |

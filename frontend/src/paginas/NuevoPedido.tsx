@@ -1,62 +1,72 @@
-// El formulario del comercial: sencillo, en 3 bloques, con Vendi guiando y
+// El formulario del comercial: sencillo, en 4 bloques, con Vendi guiando y
 // una vista previa en vivo de como va a quedar la tarjeta en el tablero.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, CarFront, FileText, ImagePlus, KanbanSquare, Puzzle, RotateCcw, Send, X } from 'lucide-react'
+import { ArrowRight, Box, CarFront, CloudCheck, CloudOff, FileText, Gem, ImagePlus, KanbanSquare, Layers, Puzzle, RotateCcw, Send, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ErrorApi } from '@/api/cliente'
 import { adjuntos, pedidos, tablero } from '@/api/endpoints'
-import type { PedidoDetalle, Prioridad, Tarjeta } from '@/api/tipos'
+import type { PedidoDetalle, Tarjeta, TipoVidrio } from '@/api/tipos'
 import { useAuth } from '@/auth/AuthContext'
 import { EditorPiezas, type PiezaEditable } from '@/componentes/EditorPiezas'
 import { Personaje, type Expresion } from '@/componentes/personajes/Personaje'
 import { TituloBarra } from '@/componentes/TituloBarra'
 import { celebrar } from '@/utiles/confeti'
-import { NOMBRE_PRIORIDAD, tamanoArchivo } from '@/utiles/formato'
+import { tamanoArchivo } from '@/utiles/formato'
 import { TarjetaPedido } from './tablero/TarjetaPedido'
 import './nuevo-pedido.css'
 
-const PATRON_VIN = /^[A-HJ-NPR-Z0-9]{17}$/
-const PRIORIDADES: Prioridad[] = ['baja', 'media', 'alta', 'urgente']
 const ANIO_MAX = new Date().getFullYear() + 2
 const MAX_MB = 25
 
-// ojo: toISOString() da la fecha en UTC y en la noche de Colombia ya seria "mañana"
-const hoyLocal = () => new Date().toLocaleDateString('en-CA')
-
-const VACIO = { vehiculo: '', modelo: '', anio: '', vin: '', cliente: '', descripcion: '', prioridad: 'media' as Prioridad, fecha_requerida: '' }
+const VACIO = {
+  marca: '', modelo: '', version_vehiculo: '', plataforma: '', anio: '', vin: '', mercado: '',
+  tipo_vidrio: 'original' as TipoVidrio, info_en_drive: null as boolean | null, descripcion: '',
+}
+type Formulario = typeof VACIO
 
 export default function NuevoPedido() {
   const { usuario } = useAuth()
   const qc = useQueryClient()
-  const [f, setF] = useState(VACIO)
+  const [f, setF] = useState<Formulario>(VACIO)
   const [piezas, setPiezas] = useState<PiezaEditable[]>([])
   const [archivos, setArchivos] = useState<File[]>([])
   const [etiquetas, setEtiquetas] = useState<number[]>([])
   const [creado, setCreado] = useState<PedidoDetalle | null>(null)
   const [intentoEnviar, setIntentoEnviar] = useState(false)
   const { data: datosTablero } = useQuery({ queryKey: ['tablero'], queryFn: tablero.ver, staleTime: 60000 })
+  // el catalogo casi nunca cambia: se pide una vez y se guarda 10 minutos
+  const { data: catalogos } = useQuery({ queryKey: ['catalogos'], queryFn: tablero.catalogos, staleTime: 600000 })
 
-  const vinLimpio = f.vin.replace(/\s/g, '').toUpperCase()
-  const vinValido = !vinLimpio || PATRON_VIN.test(vinLimpio)
   const anioValido = !f.anio || (Number(f.anio) >= 1950 && Number(f.anio) <= ANIO_MAX)
-  const piezasValidas = piezas.filter((p) => p.nombre.trim())
-  const listo = Boolean(f.vehiculo.trim()) && piezasValidas.length > 0 && vinValido && anioValido
+  const faltaDrive = f.tipo_vidrio === '3d' && f.info_en_drive === null
+  const faltan = {
+    marca: !f.marca.trim(),
+    modelo: !f.modelo.trim(),
+    vin: !f.vin.trim(),
+    mercado: !f.mercado,
+    piezas: piezas.length === 0,
+    drive: faltaDrive,
+  }
+  const listo = !Object.values(faltan).some(Boolean) && anioValido
+  const vehiculoCompleto = !faltan.marca && !faltan.modelo && !faltan.vin && !faltan.mercado && anioValido
 
   const crear = useMutation({
     mutationFn: async () => {
       const pedido = await pedidos.crear({
-        vehiculo: f.vehiculo,
-        modelo: f.modelo || null,
+        marca: f.marca,
+        modelo: f.modelo,
+        version_vehiculo: f.version_vehiculo || null,
+        plataforma: f.plataforma || null,
         anio: f.anio ? Number(f.anio) : null,
-        vin: vinLimpio || null,
-        cliente: f.cliente || null,
+        vin: f.vin,
+        mercado: f.mercado,
+        tipo_vidrio: f.tipo_vidrio,
+        info_en_drive: f.tipo_vidrio === '3d' ? f.info_en_drive : null,
         descripcion: f.descripcion || null,
-        prioridad: f.prioridad,
-        fecha_requerida: f.fecha_requerida || null,
-        piezas: piezasValidas.map(({ nombre, cantidad, observacion }) => ({ nombre: nombre.trim(), cantidad, observacion: observacion?.trim() || null })),
+        piezas: piezas.map(({ codigo, nombre, observacion }) => ({ codigo: codigo ?? null, nombre, observacion: observacion?.trim() || null })),
         etiquetas,
       })
       if (archivos.length) {
@@ -95,23 +105,24 @@ export default function NuevoPedido() {
 
   const guia = useMemo((): { texto: string; cara: Expresion } => {
     if (crear.isPending) return { texto: 'Enviando al tablero… 🚀', cara: 'pensando' }
-    if (!vinValido) return { texto: 'Mmm, ese VIN no me cuadra. Son 17 caracteres y nunca lleva I, O ni Q.', cara: 'sorprendido' }
     if (!anioValido) return { texto: `El año tiene que estar entre 1950 y ${ANIO_MAX}.`, cara: 'sorprendido' }
-    if (!f.vehiculo.trim()) return { texto: `¡Hola ${usuario?.nombre.split(' ')[0]}! Empecemos por el vehículo 🚗`, cara: 'feliz' }
-    if (vinLimpio.length === 17) {
-      if (!piezasValidas.length) return { texto: '¡VIN perfecto! ✨ Ahora dime qué piezas lleva.', cara: 'guiño' }
-    }
-    if (!piezasValidas.length) return { texto: `Buenísimo, ${f.vehiculo}. ¿Qué piezas lleva?`, cara: 'pensando' }
+    if (faltan.marca) return { texto: `¡Hola ${usuario?.nombre.split(' ')[0]}! Empecemos por la marca del vehículo 🚗`, cara: 'feliz' }
+    if (faltan.modelo) return { texto: `${f.marca}, buenísimo. ¿Qué modelo?`, cara: 'pensando' }
+    if (faltan.vin) return { texto: 'Me falta el VIN. Pégalo como venga, sin importar el largo.', cara: 'pensando' }
+    if (faltan.mercado) return { texto: '¿Para qué mercado es? México, LATAM, Europa…', cara: 'pensando' }
+    if (faltaDrive) return { texto: 'Es 3D: cuéntame si la información ya está en Drive.', cara: 'sorprendido' }
+    if (faltan.piezas) return { texto: 'Ahora las piezas. Escribe el código (000, 001…) y yo le pongo el nombre.', cara: 'guiño' }
     if (!archivos.length) return { texto: 'Si tienes fotos o planos, súbelos. Al dibujante le ayudan un montón.', cara: 'feliz' }
     return { texto: '¡Todo listo! Dale a Enviar y le aviso al equipo 🙌', cara: 'celebrando' }
-  }, [crear.isPending, vinValido, anioValido, f.vehiculo, vinLimpio, piezasValidas.length, archivos.length, usuario])
+  }, [crear.isPending, anioValido, faltan.marca, faltan.modelo, faltan.vin, faltan.mercado, faltaDrive, faltan.piezas, f.marca, archivos.length, usuario])
 
   // vista previa: una tarjeta "falsa" armada con lo que va escribiendo
   const vistaPrevia: Tarjeta | null = usuario ? {
-    id: 0, codigo: 'PED-…', vehiculo: f.vehiculo || 'Vehículo', modelo: f.modelo || null, anio: f.anio ? Number(f.anio) : null,
-    prioridad: f.prioridad, fecha_requerida: f.fecha_requerida || null, columna_id: 0, posicion: 0,
+    id: 0, codigo: 'PED-…', marca: f.marca || 'Marca', modelo: f.modelo || 'Modelo', version_vehiculo: f.version_vehiculo || null,
+    anio: f.anio ? Number(f.anio) : null, mercado: f.mercado || '—', tipo_vidrio: f.tipo_vidrio,
+    prioridad: 'media', fecha_requerida: null, columna_id: 0, posicion: 0,
     creado_por: usuario, miembros: [], etiquetas: datosTablero?.etiquetas.filter((e) => etiquetas.includes(e.id)) ?? [],
-    total_piezas: piezasValidas.reduce((s, p) => s + p.cantidad, 0), checklist_hechos: 0, checklist_total: 0,
+    total_piezas: piezas.length, checklist_hechos: 0, checklist_total: 0,
     total_mensajes: 0, total_adjuntos: archivos.length, portada_url: null, completado_en: null, creado_en: new Date().toISOString(), version: 1,
   } : null
 
@@ -121,10 +132,11 @@ export default function NuevoPedido() {
 
   if (creado) return <Exito pedido={creado} alOtro={reiniciar} />
 
-  const campo = (clave: keyof typeof VACIO) => ({
-    value: f[clave],
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [clave]: e.target.value }),
+  const campo = (clave: keyof Formulario) => ({
+    value: String(f[clave] ?? ''),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF({ ...f, [clave]: e.target.value }),
   })
+  const falta = (clave: keyof typeof faltan) => intentoEnviar && faltan[clave]
 
   return (
     <div className="nuevo">
@@ -136,78 +148,94 @@ export default function NuevoPedido() {
           e.preventDefault()
           setIntentoEnviar(true)
           if (listo) crear.mutate()
+          else toast.error('Faltan datos obligatorios, te los marqué en rojo')
         }}
       >
-        <Bloque numero={1} icono={<CarFront size={18} />} titulo="El vehículo" completo={Boolean(f.vehiculo.trim()) && vinValido && anioValido}>
+        <Bloque numero={1} icono={<CarFront size={18} />} titulo="El vehículo" completo={vehiculoCompleto}>
           <div className="nuevo__rejilla">
-            <div className="campo nuevo__ancho">
-              <label htmlFor="vehiculo">Vehículo *</label>
-              <input id="vehiculo" className="entrada entrada--grande" placeholder="Ej: Toyota Hilux" autoFocus maxLength={120} aria-invalid={intentoEnviar && !f.vehiculo.trim()} {...campo('vehiculo')} />
-              {intentoEnviar && !f.vehiculo.trim() && <span className="error-campo">Falta el vehículo</span>}
+            <div className="campo">
+              <label htmlFor="marca">Marca *</label>
+              <input id="marca" className="entrada entrada--grande" placeholder="Ej: Toyota" autoFocus maxLength={80} aria-invalid={falta('marca')} {...campo('marca')} />
+              {falta('marca') && <span className="error-campo">Falta la marca</span>}
             </div>
             <div className="campo">
-              <label htmlFor="modelo">Modelo / versión</label>
-              <input id="modelo" className="entrada" placeholder="Ej: SRV 4x4" maxLength={120} {...campo('modelo')} />
+              <label htmlFor="modelo">Modelo *</label>
+              <input id="modelo" className="entrada entrada--grande" placeholder="Ej: Hilux" maxLength={120} aria-invalid={falta('modelo')} {...campo('modelo')} />
+              {falta('modelo') && <span className="error-campo">Falta el modelo</span>}
             </div>
             <div className="campo">
-              <label htmlFor="anio">Año</label>
+              <label htmlFor="version">Versión <span className="sutil">(opcional)</span></label>
+              <input id="version" className="entrada" placeholder="Ej: SRV 4x4" maxLength={120} {...campo('version_vehiculo')} />
+            </div>
+            <div className="campo">
+              <label htmlFor="plataforma">Plataforma o código de modelo <span className="sutil">(opcional)</span></label>
+              <input id="plataforma" className="entrada mono" placeholder="Ej: AN120, TNGA-F" maxLength={80} {...campo('plataforma')} />
+            </div>
+            <div className="campo">
+              <label htmlFor="anio">Año <span className="sutil">(opcional)</span></label>
               <input id="anio" className="entrada" type="number" inputMode="numeric" placeholder={String(new Date().getFullYear())} min={1950} max={ANIO_MAX} aria-invalid={!anioValido} {...campo('anio')} />
             </div>
-            <div className="campo nuevo__ancho">
-              <label htmlFor="vin">VIN <span className="sutil">(opcional)</span></label>
-              <div className={`nuevo__vin ${vinLimpio.length === 17 && vinValido ? 'ok' : ''} ${!vinValido ? 'mal' : ''}`}>
-                <input id="vin" className="entrada mono" maxLength={20} placeholder="17 caracteres" aria-invalid={!vinValido} value={f.vin} onChange={(e) => setF({ ...f, vin: e.target.value.toUpperCase() })} />
-                <span className="nuevo__vin-cuenta">{vinLimpio.length}/17</span>
-              </div>
-              <div className="nuevo__vin-cajas" aria-hidden="true">
-                {Array.from({ length: 17 }, (_, i) => <span key={i} className={i < vinLimpio.length ? 'lleno' : ''}>{vinLimpio[i] ?? ''}</span>)}
-              </div>
-            </div>
-            <div className="campo nuevo__ancho">
-              <label htmlFor="cliente">Cliente <span className="sutil">(opcional)</span></label>
-              <input id="cliente" className="entrada" placeholder="¿Para quién es?" maxLength={150} {...campo('cliente')} />
-            </div>
-          </div>
-        </Bloque>
-
-        <Bloque numero={2} icono={<Puzzle size={18} />} titulo="Las piezas" completo={piezasValidas.length > 0}>
-          <EditorPiezas piezas={piezas} onChange={setPiezas} />
-          {intentoEnviar && !piezasValidas.length && <span className="error-campo">Agrega mínimo una pieza</span>}
-        </Bloque>
-
-        <Bloque numero={3} icono={<ImagePlus size={18} />} titulo="Detalles y archivos" completo={archivos.length > 0 || Boolean(f.descripcion)} opcional>
-          <div className="campo">
-            <label>Prioridad</label>
-            <div className="selector-prioridad">
-              {PRIORIDADES.map((p) => (
-                <button type="button" key={p} className={f.prioridad === p ? 'activa' : ''} style={{ '--p': `var(--prioridad-${p})` } as React.CSSProperties} onClick={() => setF({ ...f, prioridad: p })}>
-                  {NOMBRE_PRIORIDAD[p]}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="nuevo__rejilla">
             <div className="campo">
-              <label htmlFor="fecha">¿Para cuándo se necesita?</label>
-              <input id="fecha" className="entrada" type="date" min={hoyLocal()} {...campo('fecha_requerida')} />
+              <label htmlFor="mercado">Mercado *</label>
+              <select id="mercado" className="entrada" aria-invalid={falta('mercado')} {...campo('mercado')}>
+                <option value="" disabled>Escoge el mercado…</option>
+                {(catalogos?.mercados ?? []).map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+              {falta('mercado') && <span className="error-campo">Escoge el mercado</span>}
             </div>
-            {datosTablero && datosTablero.etiquetas.length > 0 && (
-              <div className="campo">
-                <label>Etiquetas</label>
-                <div className="detalles__etiquetas">
-                  {datosTablero.etiquetas.map((e) => {
-                    const activa = etiquetas.includes(e.id)
-                    return (
-                      <button type="button" key={e.id} className="chip" style={activa ? { background: `${e.color}44`, borderColor: e.color } : undefined}
-                        onClick={() => setEtiquetas((s) => (activa ? s.filter((x) => x !== e.id) : [...s, e.id]))}>
-                        <span className="punto" style={{ background: e.color }} />{e.nombre}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+            <div className="campo nuevo__ancho">
+              <label htmlFor="vin">VIN *</label>
+              {/* libre: sin limite ni formato, pueden pegar varios o traer notas */}
+              <textarea id="vin" className="entrada mono nuevo__vin-libre" rows={1} placeholder="Pega el VIN tal cual (puede ser largo o traer varios)" aria-invalid={falta('vin')} {...campo('vin')} />
+              <span className="ayuda-campo">{f.vin.length ? `${f.vin.length} caracteres` : 'Sin límite de caracteres'}</span>
+              {falta('vin') && <span className="error-campo">El VIN es obligatorio</span>}
+            </div>
           </div>
+        </Bloque>
+
+        <Bloque numero={2} icono={<Layers size={18} />} titulo="El vidrio" completo={!faltaDrive}>
+          <div className="nuevo__opciones" role="radiogroup" aria-label="Tipo de vidrio">
+            <Opcion activa={f.tipo_vidrio === 'original'} onClick={() => setF({ ...f, tipo_vidrio: 'original', info_en_drive: null })}
+              icono={<Gem size={22} />} titulo="Vidrio original" texto="Se trabaja con la pieza original del vehículo" />
+            <Opcion activa={f.tipo_vidrio === '3d'} onClick={() => setF({ ...f, tipo_vidrio: '3d' })}
+              icono={<Box size={22} />} titulo="3D" texto="Se trabaja con un modelo 3D" />
+          </div>
+          <AnimatePresence>
+            {f.tipo_vidrio === '3d' && (
+              <motion.div className="campo" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                <label>¿Ya está la información en Drive? *</label>
+                <div className="nuevo__opciones nuevo__opciones--chicas" role="radiogroup">
+                  <Opcion activa={f.info_en_drive === true} onClick={() => setF({ ...f, info_en_drive: true })} icono={<CloudCheck size={20} />} titulo="Sí, ya está" />
+                  <Opcion activa={f.info_en_drive === false} onClick={() => setF({ ...f, info_en_drive: false })} icono={<CloudOff size={20} />} titulo="Todavía no" />
+                </div>
+                {falta('drive') && <span className="error-campo">Cuéntanos si la información ya está en Drive</span>}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Bloque>
+
+        <Bloque numero={3} icono={<Puzzle size={18} />} titulo="Las piezas" completo={piezas.length > 0}>
+          <EditorPiezas piezas={piezas} onChange={setPiezas} catalogo={catalogos?.piezas ?? []} />
+          {falta('piezas') && <span className="error-campo">Agrega mínimo una pieza</span>}
+        </Bloque>
+
+        <Bloque numero={4} icono={<ImagePlus size={18} />} titulo="Comentarios y archivos" completo={archivos.length > 0 || Boolean(f.descripcion)} opcional>
+          {datosTablero && datosTablero.etiquetas.length > 0 && (
+            <div className="campo">
+              <label>Etiquetas</label>
+              <div className="detalles__etiquetas">
+                {datosTablero.etiquetas.map((e) => {
+                  const activa = etiquetas.includes(e.id)
+                  return (
+                    <button type="button" key={e.id} className="chip" style={activa ? { background: `${e.color}44`, borderColor: e.color } : undefined}
+                      onClick={() => setEtiquetas((s) => (activa ? s.filter((x) => x !== e.id) : [...s, e.id]))}>
+                      <span className="punto" style={{ background: e.color }} />{e.nombre}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           <div className="campo">
             <label htmlFor="descripcion">Comentarios para el equipo</label>
             <textarea id="descripcion" className="entrada" placeholder="Algo que el dibujante o el técnico deba saber…" maxLength={4000} {...campo('descripcion')} />
@@ -249,12 +277,25 @@ export default function NuevoPedido() {
         <p className="etiqueta-campo">Así se va a ver en el tablero</p>
         {vistaPrevia && <TarjetaPedido tarjeta={vistaPrevia} />}
         <ol className="nuevo__pasos">
-          <li className={f.vehiculo.trim() ? 'ok' : ''}>Vehículo</li>
-          <li className={piezasValidas.length ? 'ok' : ''}>Piezas ({piezasValidas.length})</li>
+          <li className={vehiculoCompleto ? 'ok' : ''}>Vehículo</li>
+          <li className={!faltaDrive ? 'ok' : ''}>Vidrio ({f.tipo_vidrio === '3d' ? '3D' : 'original'})</li>
+          <li className={piezas.length ? 'ok' : ''}>Piezas ({piezas.length})</li>
           <li className={archivos.length ? 'ok' : ''}>Archivos ({archivos.length})</li>
         </ol>
       </aside>
     </div>
+  )
+}
+
+function Opcion({ activa, onClick, icono, titulo, texto }: { activa: boolean; onClick: () => void; icono: React.ReactNode; titulo: string; texto?: string }) {
+  return (
+    <button type="button" role="radio" aria-checked={activa} className={`nuevo__opcion ${activa ? 'activa' : ''}`} onClick={onClick}>
+      <span className="nuevo__opcion-icono">{icono}</span>
+      <span className="nuevo__opcion-textos">
+        <strong>{titulo}</strong>
+        {texto && <span>{texto}</span>}
+      </span>
+    </button>
   )
 }
 
@@ -309,12 +350,12 @@ function Exito({ pedido, alOtro }: { pedido: PedidoDetalle; alOtro: () => void }
         <span className="chip mono">{pedido.codigo}</span>
         <h1 className="titulo-pagina">¡Pedido enviado!</h1>
         <p>
-          <b>{pedido.vehiculo} {pedido.modelo}</b> ya está en el tablero con {pedido.total_piezas} pieza(s).
+          <b>{pedido.marca} {pedido.modelo}</b> ya está en el tablero con {pedido.total_piezas} pieza(s).
           <br />Le avisé al equipo de dibujo y técnica. 📬
         </p>
         <div className="nuevo__exito-botones">
           <button className="btn btn-grande" onClick={alOtro}><RotateCcw size={18} /> Crear otro</button>
-          <Link className="btn btn-primario btn-grande" to={`/mis-pedidos`}>Ver mis pedidos <ArrowRight size={18} /></Link>
+          <Link className="btn btn-primario btn-grande" to="/mis-pedidos">Ver mis pedidos <ArrowRight size={18} /></Link>
           <Link className="btn btn-grande" to={`/tablero?pedido=${pedido.id}`}><KanbanSquare size={18} /> Abrir en tablero</Link>
         </div>
       </motion.div>

@@ -3,6 +3,7 @@
 
 export type Personaje = 'vidrito' | 'vendedora' | 'trazos' | 'tuerca' | 'jefa'
 export type Prioridad = 'baja' | 'media' | 'alta' | 'urgente'
+export type TipoVidrio = 'original' | '3d'
 
 export interface Rol {
   id: number
@@ -56,9 +57,20 @@ export interface Miembro {
 
 export interface Pieza {
   id?: number
+  codigo?: string | null
   nombre: string
-  cantidad: number
   observacion?: string | null
+}
+
+export interface PiezaCatalogo {
+  codigo: string
+  nombre: string
+  simetrica: string | null
+}
+
+export interface Catalogos {
+  piezas: PiezaCatalogo[]
+  mercados: string[]
 }
 
 export interface ItemChecklist {
@@ -71,9 +83,12 @@ export interface ItemChecklist {
 export interface Tarjeta {
   id: number
   codigo: string
-  vehiculo: string
-  modelo: string | null
+  marca: string
+  modelo: string
+  version_vehiculo: string | null
   anio: number | null
+  mercado: string
+  tipo_vidrio: TipoVidrio
   prioridad: Prioridad
   fecha_requerida: string | null
   columna_id: number
@@ -93,8 +108,9 @@ export interface Tarjeta {
 }
 
 export interface PedidoDetalle extends Tarjeta {
-  vin: string | null
-  cliente: string | null
+  vin: string
+  plataforma: string | null
+  info_en_drive: boolean | null
   descripcion: string | null
   piezas: Pieza[]
   checklist: ItemChecklist[]
@@ -165,17 +181,23 @@ export interface ItemConfig {
 }
 
 export interface NuevoPedido {
-  vehiculo: string
-  modelo?: string | null
+  marca: string
+  modelo: string
+  version_vehiculo?: string | null
+  plataforma?: string | null
   anio?: number | null
-  vin?: string | null
-  cliente?: string | null
+  vin: string
+  mercado: string
+  tipo_vidrio: TipoVidrio
+  info_en_drive?: boolean | null
   descripcion?: string | null
-  prioridad: Prioridad
-  fecha_requerida?: string | null
   piezas: Pieza[]
   asignados?: number[]
   etiquetas?: number[]
 }
 
-export type EdicionPedido = Partial<Omit<NuevoPedido, 'asignados'>> & { version: number }
+export type EdicionPedido = Partial<Omit<NuevoPedido, 'asignados'>> & {
+  version: number
+  prioridad?: Prioridad
+  fecha_requerida?: string | null
+}

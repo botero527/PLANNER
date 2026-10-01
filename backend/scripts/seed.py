@@ -16,7 +16,7 @@ from sqlalchemy import select
 import app.modelos  # noqa: F401
 from app.core.db import SesionLocal
 from app.core.seguridad import guardar_password
-from app.modulos.tablero.model import Columna, Configuracion, Etiqueta
+from app.modulos.tablero.model import CatalogoPieza, Columna, Configuracion, Etiqueta
 from app.modulos.usuarios.model import Permiso, Rol, Usuario
 
 PERMISOS = {
@@ -60,7 +60,49 @@ CONFIG = {
     "correo.eventos": ("pedido.creado,pedido.movido,pedido.asignado,pedido.completado,chat.mencion",
                        "Eventos que ademas de la campanita mandan correo (separados por coma)"),
     "tablero.dias_visibles_terminados": ("30", "Dias que un pedido terminado sigue visible en el tablero"),
+    "pedido.mercados": ("México,LATAM,Europa,Asia,USA", "Opciones del desplegable Mercado del formulario (separadas por coma)"),
 }
+
+# Catalogo de piezas AGP, copiado de MODULO_5/app.py (PIEZAS y _PARES_SIMETRIA).
+# Ojo: en Modulo 5 el 085 "Posterior Secundario" queda pisado por el for de
+# "Vidrio Especial Laminado" (80-86). Aca gana el nombre explicito.
+PIEZAS_AGP = {
+    "000": "Parabrisas",
+    "001": "Lateral Delantero Izquierdo", "002": "Lateral Delantero Derecho",
+    "003": "Lateral Trasero Izquierdo", "004": "Lateral Trasero Derecho",
+    "005": "Ventilete Trasero Izquierdo", "006": "Ventilete Trasero Derecho",
+    "007": "Cabina Trasera Izquierda", "008": "Cabina Trasera Derecha",
+    "009": "Posterior", "010": "Techo Solar Delantero",
+    "011": "Lateral Extendido Izquierdo", "012": "Lateral Extendido Derecho",
+    "013": "Posterior Izquierdo", "014": "Posterior Derecho",
+    "015": "Claraboya Izquierda", "016": "Claraboya Derecha",
+    "017": "Mirilla", "018": "Probeta",
+    "019": "Ventilete Delantero Izquierdo", "020": "Ventilete Delantero Derecho",
+    "021": "Cabina Delantera Izquierda", "022": "Cabina Delantera Derecha",
+    "023": "Cabina Superior Izquierda", "024": "Cabina Superior Derecha",
+    "025": "Techo Solar B", "026": "Parabrisas Derecho", "027": "Parabrisas Izquierdo",
+    "028": "Lateral Secundario Derecho", "029": "Lateral Secundario Izquierdo",
+    "030": "Partición", "031": "Arquitectura",
+    "034": "Porthole 1", "035": "Porthole 2", "036": "Porthole 3", "037": "Porthole 4",
+    "040": "Pummel", "087": "Techo Solar Céntrico", "088": "Techo Solar D",
+    "090": "Techo Solar Panorámico", "091": "Probeta 2", "092": "Probeta 3",
+    "093": "Probeta Especial", "094": "Probeta 4", "095": "Kit Opaco", "096": "Probeta 5",
+    "097": "Probeta 6", "110": "Techo Solar A — Paquete", "125": "Techo Solar B — Paquete",
+    "187": "Techo Solar C — Paquete", "190": "Techo Solar Panorámico — Paquete",
+}
+for _i in range(1, 20):
+    PIEZAS_AGP[f"{40 + _i:03d}"] = f"Pieza Especial {_i}"
+for _i in range(1, 11):
+    PIEZAS_AGP[f"{59 + _i:03d}"] = f"Vidrio Especial {_i}"
+for _i, _n in enumerate([25, 26, 27, 28], 70):
+    PIEZAS_AGP[f"{_i:03d}"] = f"Pieza Plana Especial {_n}"
+for _i in range(80, 87):
+    PIEZAS_AGP.setdefault(f"{_i:03d}", "Vidrio Especial Laminado")
+PIEZAS_AGP["085"] = "Posterior Secundario"
+
+# izquierda <-> derecha
+PARES_SIMETRIA = [("001", "002"), ("003", "004"), ("005", "006"), ("007", "008"), ("011", "012"), ("013", "014"),
+                  ("015", "016"), ("019", "020"), ("021", "022"), ("023", "024"), ("026", "027"), ("028", "029")]
 
 # Usuarios de prueba (uno por rol). Clave temporal random: se imprime una sola vez
 USUARIOS_DEMO = [
@@ -108,6 +150,12 @@ def main() -> None:
         for clave, (valor, desc) in CONFIG.items():
             if not db.get(Configuracion, clave):
                 db.add(Configuracion(clave=clave, valor=valor, descripcion=desc))
+
+        simetrica = {a: b for a, b in PARES_SIMETRIA} | {b: a for a, b in PARES_SIMETRIA}
+        existentes_piezas = set(db.scalars(select(CatalogoPieza.codigo)))
+        for codigo, nombre in sorted(PIEZAS_AGP.items()):
+            if codigo not in existentes_piezas:
+                db.add(CatalogoPieza(codigo=codigo, nombre=nombre, simetrica=simetrica.get(codigo)))
 
         db.flush()
         creados = []

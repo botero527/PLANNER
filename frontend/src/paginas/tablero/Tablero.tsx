@@ -68,7 +68,7 @@ export default function Tablero() {
     if (soloMios && usuario && t.creado_por.id !== usuario.id && !t.miembros.some((m) => m.usuario.id === usuario.id)) return false
     if (busqueda.trim()) {
       const q = busqueda.trim().toLowerCase()
-      const texto = `${t.codigo} ${t.vehiculo} ${t.modelo ?? ''} ${t.anio ?? ''} ${t.creado_por.nombre}`.toLowerCase()
+      const texto = `${t.codigo} ${t.marca} ${t.modelo} ${t.version_vehiculo ?? ''} ${t.anio ?? ''} ${t.mercado} ${t.creado_por.nombre}`.toLowerCase()
       if (!texto.includes(q)) return false
     }
     return true
@@ -190,7 +190,7 @@ export default function Tablero() {
           <h1 className="titulo-pagina">Tablero</h1>
           <label className="tablero__buscar">
             <Search size={16} />
-            <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar vehículo, código…" />
+            <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar marca, modelo, código…" />
             {busqueda && <button onClick={() => setBusqueda('')} aria-label="Limpiar búsqueda"><X size={14} /></button>}
           </label>
           {puede('pedido.crear') && (

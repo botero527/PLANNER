@@ -6,6 +6,7 @@
 // pantalla quede desincronizada con la base.
 import { useQueryClient } from '@tanstack/react-query'
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { insertarMensaje, moverEnTablero, reemplazarMensaje, refrescarPronto } from './cacheLocal'
 import { sesion } from './cliente'
 import type { Mensaje, Personaje } from './tipos'
 
@@ -17,7 +18,7 @@ export interface UsuarioEnLinea {
 
 export type Evento =
   | { tipo: 'presencia'; usuarios: UsuarioEnLinea[] }
-  | { tipo: 'tablero.movido'; pedido_id: number; columna_id: number; por: UsuarioEnLinea; completado: boolean }
+  | { tipo: 'tablero.movido'; pedido_id: number; columna_id: number; posicion: number; por: UsuarioEnLinea; completado: boolean }
   | { tipo: 'tablero.cambio'; pedido_id?: number; motivo: string; por: number }
   | { tipo: 'pedido.cambio'; pedido_id: number; por: number }
   | { tipo: 'chat.mensaje' | 'chat.editado'; pedido_id: number; mensaje: Mensaje }
@@ -84,30 +85,38 @@ export function TiempoRealProvider({ children, usuarioId }: { children: ReactNod
           setEnLinea(e.usuarios)
           break
         case 'tablero.movido':
+          // la tarjeta se mueve de una en pantalla; la recarga completa va despues y agrupada
+          moverEnTablero(qc, e.pedido_id, e.columna_id, e.posicion)
+          refrescarPronto(qc, ['tablero'])
+          refrescarPronto(qc, ['pedido', e.pedido_id])
+          refrescarPronto(qc, ['historial', e.pedido_id])
+          break
         case 'tablero.cambio':
-          qc.invalidateQueries({ queryKey: ['tablero'] })
+          refrescarPronto(qc, ['tablero'])
           if (e.pedido_id) {
-            qc.invalidateQueries({ queryKey: ['pedido', e.pedido_id] })
-            qc.invalidateQueries({ queryKey: ['historial', e.pedido_id] })
+            refrescarPronto(qc, ['pedido', e.pedido_id])
+            refrescarPronto(qc, ['historial', e.pedido_id])
           }
           break
         case 'pedido.cambio':
-          qc.invalidateQueries({ queryKey: ['pedido', e.pedido_id] })
-          qc.invalidateQueries({ queryKey: ['tablero'] })
+          refrescarPronto(qc, ['pedido', e.pedido_id])
+          refrescarPronto(qc, ['tablero'])
           break
         case 'chat.mensaje':
+          // el evento trae el mensaje completo: se mete directo, sin pedir nada al servidor
+          insertarMensaje(qc, e.mensaje)
+          break
         case 'chat.editado':
-          qc.invalidateQueries({ queryKey: ['mensajes', e.pedido_id] })
-          qc.invalidateQueries({ queryKey: ['tablero'] })
+          reemplazarMensaje(qc, e.mensaje)
           break
         case 'adjuntos.cambio':
-          qc.invalidateQueries({ queryKey: ['adjuntos', e.pedido_id] })
-          qc.invalidateQueries({ queryKey: ['mensajes', e.pedido_id] })
-          qc.invalidateQueries({ queryKey: ['tablero'] })
+          refrescarPronto(qc, ['adjuntos', e.pedido_id])
+          refrescarPronto(qc, ['mensajes', e.pedido_id])  // los archivos del chat van pegados al mensaje
+          refrescarPronto(qc, ['tablero'])
           break
         case 'notificacion':
-          if (e.usuarios.includes(usuarioId)) qc.invalidateQueries({ queryKey: ['notificaciones'] })
-          if (e.pedido_id) qc.invalidateQueries({ queryKey: ['historial', e.pedido_id] })
+          if (e.usuarios.includes(usuarioId)) refrescarPronto(qc, ['notificaciones'], 200)
+          if (e.pedido_id) refrescarPronto(qc, ['historial', e.pedido_id])
           break
       }
     }

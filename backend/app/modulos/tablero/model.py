@@ -40,3 +40,16 @@ class Configuracion(Base):
     clave: Mapped[str] = mapped_column(String(60), primary_key=True)
     valor: Mapped[str] = mapped_column(UnicodeText)
     descripcion: Mapped[str | None] = mapped_column(Unicode(250))
+
+
+class CatalogoPieza(Base):
+    """Codigos de pieza de AGP (los mismos de Modulo 5). Si alguien escribe 001
+    en el formulario se vuelve "Lateral Delantero Izquierdo", y si pide
+    simetria entra tambien la simetrica (002)."""
+
+    __tablename__ = "CATALOGO_PIEZAS"
+
+    codigo: Mapped[str] = mapped_column(String(3), primary_key=True)
+    nombre: Mapped[str] = mapped_column(Unicode(150))
+    simetrica: Mapped[str | None] = mapped_column(String(3))  # codigo de la pieza del otro lado
+    activa: Mapped[bool] = mapped_column(Boolean, default=True)

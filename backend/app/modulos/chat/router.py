@@ -95,7 +95,7 @@ def enviar(
     pedido_id: int, datos: MensajeIn,
     usuario: Usuario = Depends(requiere("chat.escribir")), db: Session = Depends(get_db),
 ):
-    pedido = pedidos.obtener(db, pedido_id)
+    pedido = pedidos.obtener_para_avisos(db, pedido_id)
     if datos.respuesta_a_id:
         original = db.get(Mensaje, datos.respuesta_a_id)
         if not original or original.pedido_id != pedido_id:

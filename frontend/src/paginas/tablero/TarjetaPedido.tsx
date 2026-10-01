@@ -1,7 +1,9 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CalendarDays, CheckSquare, MessageCircle, Paperclip, Puzzle } from 'lucide-react'
-import { memo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { memo, useRef } from 'react'
+import { pedidos } from '@/api/endpoints'
 import type { Tarjeta } from '@/api/tipos'
 import { PilaAvatares } from '@/componentes/Avatar'
 import { diasPara, fechaCorta, NOMBRE_PRIORIDAD } from '@/utiles/formato'
@@ -21,9 +23,21 @@ export const TarjetaArrastrable = memo(function TarjetaArrastrable({ tarjeta, al
     disabled: !puedeMover,
   })
 
+  // Prefetch: si el mouse se queda un momento encima, pedimos el detalle antes
+  // del clic. Cuando la persona da clic, ya llego y el panel abre completo.
+  const qc = useQueryClient()
+  const espera = useRef<number>(0)
+  const anticipar = () => {
+    espera.current = window.setTimeout(() => {
+      qc.prefetchQuery({ queryKey: ['pedido', tarjeta.id], queryFn: () => pedidos.ver(tarjeta.id), staleTime: 15000 })
+    }, 120)
+  }
+
   return (
     <div
       ref={setNodeRef}
+      onPointerEnter={anticipar}
+      onPointerLeave={() => window.clearTimeout(espera.current)}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={`tarjeta-hueco ${isDragging ? 'arrastrando' : ''}`}
       {...attributes}
@@ -46,7 +60,7 @@ export function TarjetaPedido({ tarjeta: t, alAbrir, flotando }: { tarjeta: Tarj
       onClick={() => alAbrir?.(t.id)}
       onKeyDown={(e) => e.key === 'Enter' && alAbrir?.(t.id)}
       tabIndex={0}
-      aria-label={`${t.codigo} ${t.vehiculo}`}
+      aria-label={`${t.codigo} ${t.marca} ${t.modelo}`}
     >
       {t.portada_url && (
         <div className="tarjeta__portada">
@@ -72,10 +86,15 @@ export function TarjetaPedido({ tarjeta: t, alAbrir, flotando }: { tarjeta: Tarj
       </div>
 
       <h3 className="tarjeta__titulo">
-        {t.vehiculo}
-        {t.modelo && <span> {t.modelo}</span>}
+        {t.marca} <span>{t.modelo}</span>
       </h3>
-      {t.anio && <p className="tarjeta__anio">{t.anio}</p>}
+      <p className="tarjeta__anio">
+        {[t.version_vehiculo, t.anio].filter(Boolean).join(' · ')}
+      </p>
+      <div className="tarjeta__chips">
+        <span className="tarjeta__chip">{t.mercado}</span>
+        {t.tipo_vidrio === '3d' && <span className="tarjeta__chip tarjeta__chip--3d">3D</span>}
+      </div>
 
       {t.checklist_total > 0 && (
         <div className="tarjeta__progreso" title={`${t.checklist_hechos} de ${t.checklist_total} listos`}>

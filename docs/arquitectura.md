@@ -45,6 +45,10 @@
 
 **Pocas consultas por petición.** Desde un PC en Colombia cada consulta a Azure cuesta 100–300 ms, así que se evita el problema N+1: permisos con JOIN en una consulta, conteos del tablero en una sola consulta agrupada, `selectin` para las relaciones. En producción (backend en Azure junto a la base) la latencia es ~1 ms.
 
+**Caché de configuración y catálogo.** `core/cache.py` guarda en memoria (30 s la configuración, 5 min el catálogo de piezas) lo que casi nunca cambia y se leía en cada petición. Al guardar configuración desde la app se invalida al instante.
+
+**Chat optimista.** El mensaje se pinta al instante con un id temporal y se confirma cuando responde el servidor. El que llega por WebSocket se inserta directo en la caché (`api/cacheLocal.ts`), sin volver a pedir la lista ni el tablero. Los envíos de un mismo chat van en fila (`scope` de React Query) para no llegar en desorden, y los refrescos que sí hacen falta van agrupados (*debounce*).
+
 **Reintentos de conexión.** Azure SQL a veces corta conexiones nuevas (error 10054). `core/db.py` reintenta hasta 4 veces con espera creciente, como recomienda Microsoft para errores transitorios.
 
 ## Frontend

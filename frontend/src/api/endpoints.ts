@@ -2,7 +2,7 @@
 // escriben una URL: llaman api.pedidos.mover(...) y listo.
 import { api } from './cliente'
 import type {
-  Adjunto, Bandeja, Columna, EdicionPedido, EntradaHistorial, ItemConfig, Mensaje,
+  Adjunto, Bandeja, Catalogos, Columna, EdicionPedido, EntradaHistorial, ItemConfig, Mensaje,
   NuevoPedido, PedidoDetalle, Rol, Tablero, Usuario, UsuarioMini, Yo,
 } from './tipos'
 
@@ -21,6 +21,7 @@ export const auth = {
 
 export const tablero = {
   ver: () => api<Tablero>('/tablero'),
+  catalogos: () => api<Catalogos>('/tablero/catalogos'),
   crearColumna: (datos: Partial<Columna>) => api<Columna>('/tablero/columnas', { method: 'POST', json: datos }),
   editarColumna: (id: number, datos: Partial<Columna>) =>
     api<Columna>(`/tablero/columnas/${id}`, { method: 'PATCH', json: datos }),

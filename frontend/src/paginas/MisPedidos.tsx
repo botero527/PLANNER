@@ -9,7 +9,7 @@ import { tablero } from '@/api/endpoints'
 import { useAuth } from '@/auth/AuthContext'
 import { Personaje } from '@/componentes/personajes/Personaje'
 import { TituloBarra } from '@/componentes/TituloBarra'
-import { haceCuanto, NOMBRE_PRIORIDAD } from '@/utiles/formato'
+import { haceCuanto } from '@/utiles/formato'
 import './mis-pedidos.css'
 
 function saludo() {
@@ -27,7 +27,7 @@ export default function MisPedidos() {
   const activos = mios.filter((p) => !p.completado_en)
   const listos = mios.filter((p) => p.completado_en)
   const lista = (vista === 'activos' ? activos : listos).filter((p) =>
-    `${p.codigo} ${p.vehiculo} ${p.modelo ?? ''}`.toLowerCase().includes(busqueda.toLowerCase()))
+    `${p.codigo} ${p.marca} ${p.modelo} ${p.mercado}`.toLowerCase().includes(busqueda.toLowerCase()))
 
   if (!usuario) return null
   const columnas = data?.columnas ?? []
@@ -78,9 +78,10 @@ export default function MisPedidos() {
                 <Link to={`/tablero?pedido=${p.id}`} className="mis__item vidrio" style={{ '--c': columna?.color, '--prioridad': `var(--prioridad-${p.prioridad})` } as React.CSSProperties}>
                   <div className="mis__principal">
                     <span className="mono sutil">{p.codigo}</span>
-                    <h3>{p.vehiculo} {p.modelo && <span>{p.modelo}</span>} {p.anio && <small>{p.anio}</small>}</h3>
+                    <h3>{p.marca} <span>{p.modelo}</span> {p.version_vehiculo && <small>{p.version_vehiculo}</small>}</h3>
                     <div className="mis__datos">
-                      <span className="chip" style={{ color: 'var(--prioridad)' }}><span className="punto" style={{ background: 'var(--prioridad)' }} />{NOMBRE_PRIORIDAD[p.prioridad]}</span>
+                      <span className="chip">{p.mercado}</span>
+                      {p.tipo_vidrio === '3d' && <span className="chip" style={{ color: 'var(--primario)' }}>3D</span>}
                       <span>{p.total_piezas} pieza(s)</span>
                       {p.total_mensajes > 0 && <span><MessageCircle size={13} /> {p.total_mensajes}</span>}
                       {p.total_adjuntos > 0 && <span><Paperclip size={13} /> {p.total_adjuntos}</span>}
