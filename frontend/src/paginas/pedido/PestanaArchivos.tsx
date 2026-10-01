@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AnimatePresence, motion } from 'motion/react'
-import { Download, FileArchive, FileSpreadsheet, FileText, FileImage, Trash2, UploadCloud, X, Box } from 'lucide-react'
+import { motion } from 'motion/react'
+import { Box, Download, Eye, FileArchive, FileImage, FileSpreadsheet, FileText, Trash2, UploadCloud } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { ErrorApi } from '@/api/cliente'
@@ -8,6 +8,7 @@ import { adjuntos } from '@/api/endpoints'
 import type { Adjunto, PedidoDetalle } from '@/api/tipos'
 import { useAuth } from '@/auth/AuthContext'
 import { Personaje } from '@/componentes/personajes/Personaje'
+import { sePuedeVer, VisorArchivo } from '@/componentes/VisorArchivo'
 import { haceCuanto, tamanoArchivo } from '@/utiles/formato'
 
 function iconoPara(nombre: string) {
@@ -23,7 +24,7 @@ export function PestanaArchivos({ pedido }: { pedido: PedidoDetalle }) {
   const { usuario, puede } = useAuth()
   const qc = useQueryClient()
   const [arrastrando, setArrastrando] = useState(false)
-  const [viendo, setViendo] = useState<Adjunto | null>(null)
+  const [viendo, setViendo] = useState<number | null>(null)  // posicion en la lista del visor
   const { data: lista = [], isLoading } = useQuery({ queryKey: ['adjuntos', pedido.id], queryFn: () => adjuntos.listar(pedido.id) })
 
   const refrescar = () => {
@@ -46,6 +47,9 @@ export function PestanaArchivos({ pedido }: { pedido: PedidoDetalle }) {
 
   const imagenes = lista.filter((a) => a.es_imagen)
   const otros = lista.filter((a) => !a.es_imagen)
+  // el visor recorre las imagenes y despues los documentos, en el mismo orden de la pantalla
+  const ordenados = [...imagenes, ...otros]
+  const puedeQuitar = (a: Adjunto) => a.subido_por.id === usuario?.id || puede('pedido.eliminar')
 
   return (
     <div className="archivos">
@@ -75,7 +79,7 @@ export function PestanaArchivos({ pedido }: { pedido: PedidoDetalle }) {
           <h4 className="archivos__titulo">Imágenes ({imagenes.length})</h4>
           <div className="archivos__galeria">
             {imagenes.map((a) => (
-              <motion.button key={a.id} className="archivos__foto" onClick={() => setViendo(a)} whileHover={{ y: -3 }} layout>
+              <motion.button key={a.id} className="archivos__foto" onClick={() => setViendo(ordenados.indexOf(a))} whileHover={{ y: -3 }} layout>
                 <img src={a.url} alt={a.nombre} loading="lazy" />
                 <span>{a.nombre}</span>
               </motion.button>
@@ -91,15 +95,16 @@ export function PestanaArchivos({ pedido }: { pedido: PedidoDetalle }) {
             {otros.map((a) => {
               const Icono = iconoPara(a.nombre)
               return (
-                <li key={a.id} className="vidrio">
+                <li key={a.id} className={`vidrio ${sePuedeVer(a) ? 'se-ve' : ''}`} onClick={() => setViendo(ordenados.indexOf(a))}>
                   <span className="archivos__icono"><Icono size={20} /></span>
                   <div className="archivos__info">
                     <strong>{a.nombre}</strong>
                     <span>{tamanoArchivo(a.tamano_bytes)} · {a.subido_por.nombre} · {haceCuanto(a.creado_en)}</span>
                   </div>
-                  <a className="btn btn-fantasma btn-icono" href={a.url_descarga} title="Descargar"><Download size={17} /></a>
-                  {(a.subido_por.id === usuario?.id || puede('pedido.eliminar')) && (
-                    <button className="btn btn-fantasma btn-icono btn-peligro" onClick={() => window.confirm(`¿Quitar ${a.nombre}?`) && quitar.mutate(a.id)} title="Quitar"><Trash2 size={16} /></button>
+                  {sePuedeVer(a) && <span className="btn btn-fantasma btn-icono" title="Vista previa"><Eye size={17} /></span>}
+                  <a className="btn btn-fantasma btn-icono" href={a.url_descarga} title="Descargar" onClick={(e) => e.stopPropagation()}><Download size={17} /></a>
+                  {puedeQuitar(a) && (
+                    <button className="btn btn-fantasma btn-icono btn-peligro" onClick={(e) => { e.stopPropagation(); if (window.confirm(`¿Quitar ${a.nombre}?`)) quitar.mutate(a.id) }} title="Quitar"><Trash2 size={16} /></button>
                   )}
                 </li>
               )
@@ -108,21 +113,13 @@ export function PestanaArchivos({ pedido }: { pedido: PedidoDetalle }) {
         </section>
       )}
 
-      <AnimatePresence>
-        {viendo && (
-          <motion.div className="visor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViendo(null)}>
-            <motion.img src={viendo.url} alt={viendo.nombre} initial={{ scale: 0.92 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()} />
-            <div className="visor__barra" onClick={(e) => e.stopPropagation()}>
-              <span>{viendo.nombre}</span>
-              <a className="btn btn-chico" href={viendo.url_descarga}><Download size={14} /> Descargar</a>
-              {(viendo.subido_por.id === usuario?.id || puede('pedido.eliminar')) && (
-                <button className="btn btn-chico btn-peligro" onClick={() => { quitar.mutate(viendo.id); setViendo(null) }}><Trash2 size={14} /> Quitar</button>
-              )}
-              <button className="btn btn-chico" onClick={() => setViendo(null)}><X size={14} /></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <VisorArchivo
+        archivos={ordenados}
+        indice={viendo}
+        alCambiar={setViendo}
+        puedeQuitar={puedeQuitar}
+        alQuitar={(a) => quitar.mutate(a.id)}
+      />
     </div>
   )
 }

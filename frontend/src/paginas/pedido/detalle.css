@@ -53,54 +53,6 @@
 }
 .detalle__meta b { color: var(--texto-2); }
 
-.detalle__camino {
-  list-style: none;
-  display: flex;
-  gap: 4px;
-  margin: 18px 0 0;
-  padding: 4px;
-  border-radius: 14px;
-  background: var(--campo);
-  border: 1px solid var(--borde);
-  overflow-x: auto;
-}
-.detalle__camino li { flex: 1; min-width: 96px; }
-.detalle__paso {
-  position: relative;
-  width: 100%;
-  height: 34px;
-  border: none;
-  border-radius: 10px;
-  background: none;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--texto-3);
-  transition: color var(--rapido), background var(--rapido);
-}
-.detalle__paso:not(:disabled):hover { color: var(--texto); background: var(--vidrio-hover); }
-.detalle__paso:disabled { cursor: default; }
-.detalle__paso.pasada { color: var(--texto-2); }
-.detalle__paso.pasada::after {
-  content: '';
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  bottom: 4px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--c);
-  opacity: 0.6;
-}
-.detalle__paso.actual { color: #fff; }
-.detalle__paso-fondo {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--c);
-  box-shadow: 0 6px 20px -6px var(--c);
-}
-.detalle__paso-texto { position: relative; }
-
 .detalle__pestanas { display: flex; gap: 4px; margin-top: 12px; }
 .detalle__pestanas button {
   position: relative;
@@ -288,8 +240,11 @@
 .msj__cita span { opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .msj__adjuntos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.msj__imagen { padding: 0; border: none; background: none; cursor: zoom-in; }
 .msj__imagen img { width: 160px; height: 110px; object-fit: cover; border-radius: 10px; }
 .msj__archivo {
+  border: none;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -419,23 +374,6 @@
 .archivos__info strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .archivos__info span { font-size: 12px; color: var(--texto-3); }
 
-.visor {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 24px;
-  background: rgba(3, 5, 14, 0.88);
-  backdrop-filter: blur(6px);
-}
-.visor img { max-width: 100%; max-height: calc(100dvh - 120px); border-radius: 14px; box-shadow: var(--sombra-flotante); }
-.visor__barra { display: flex; align-items: center; gap: 8px; color: #fff; }
-.visor__barra span { margin-right: 8px; }
-
 /* Historial */
 .historial { list-style: none; margin: 0; padding: 0 0 0 8px; position: relative; }
 .historial::before { content: ''; position: absolute; left: 22px; top: 8px; bottom: 8px; width: 2px; background: var(--borde); }
@@ -489,3 +427,8 @@
 .detalles__selector { display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
 .detalles__equipo { max-height: 260px; overflow-y: auto; }
 .checklist li.pendiente { opacity: 0.6; }
+
+.detalle__columna { color: var(--texto); border-color: color-mix(in srgb, var(--c) 55%, transparent); background: color-mix(in srgb, var(--c) 16%, transparent); }
+
+.archivos__lista li { cursor: pointer; transition: border-color var(--rapido), transform var(--rapido) var(--suave); }
+.archivos__lista li:hover { border-color: var(--borde-fuerte); transform: translateX(2px); }

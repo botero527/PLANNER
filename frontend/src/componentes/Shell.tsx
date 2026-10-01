@@ -1,10 +1,11 @@
 // El "marco" de la app ya logueado: menu lateral + barra de arriba + contenido.
 import { AnimatePresence, motion } from 'motion/react'
-import { KanbanSquare, LogOut, Moon, PackagePlus, Settings2, Sun, Users, ClipboardList } from 'lucide-react'
+import { ClipboardList, KanbanSquare, LogOut, Moon, PackagePlus, PanelLeftClose, PanelLeftOpen, Settings2, Sun, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { useTiempoReal } from '@/api/tiempoReal'
 import { useAuth } from '@/auth/AuthContext'
+import { usePreferencia } from '@/utiles/preferencias'
 import { Avatar, PilaAvatares } from './Avatar'
 import { Campana } from './Campana'
 import { AvisosEnVivo } from './AvisosEnVivo'
@@ -38,6 +39,7 @@ export function Shell() {
   const { conectado, enLinea } = useTiempoReal()
   const [tema, alternarTema] = useTema()
   const ubicacion = useLocation()
+  const [compacto, setCompacto] = usePreferencia<'si' | 'no'>('menu-compacto', 'no')
   // useOutlet() y no <Outlet />: <Outlet /> siempre pinta la ruta ACTUAL, entonces
   // durante la animacion de salida la pagina vieja ya mostraba la nueva y habia
   // dos copias vivas (lo que uno escribia en la primera se perdia). Con useOutlet
@@ -56,15 +58,23 @@ export function Shell() {
   ].filter(Boolean) as { a: string; icono: typeof Users; texto: string }[]
 
   return (
-    <div className="shell">
+    <div className={`shell ${compacto === 'si' ? 'shell--compacto' : ''}`}>
       <aside className="shell__menu vidrio">
         <div className="shell__marca">
-          <LogoAGP alto={38} />
+          <LogoAGP alto={compacto === 'si' ? 24 : 38} conProducto={compacto !== 'si'} />
+          <button
+            className="btn btn-fantasma btn-icono shell__colapsar"
+            onClick={() => setCompacto(compacto === 'si' ? 'no' : 'si')}
+            aria-label={compacto === 'si' ? 'Expandir menú' : 'Colapsar menú'}
+            title={compacto === 'si' ? 'Expandir menú' : 'Colapsar menú (más espacio para el tablero)'}
+          >
+            {compacto === 'si' ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
 
         <nav className="shell__nav">
           {menu.map(({ a, icono: Icono, texto }) => (
-            <NavLink key={a} to={a} className={({ isActive }) => `shell__enlace ${isActive ? 'activo' : ''}`}>
+            <NavLink key={a} to={a} title={texto} className={({ isActive }) => `shell__enlace ${isActive ? 'activo' : ''}`}>
               {({ isActive }) => (
                 <>
                   {isActive && <motion.span layoutId="enlace-activo" className="shell__enlace-fondo" transition={{ type: 'spring', stiffness: 400, damping: 34 }} />}

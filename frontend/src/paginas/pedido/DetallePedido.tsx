@@ -4,14 +4,12 @@ import { motion } from 'motion/react'
 import { Bell, BellOff, History, Info, MessagesSquare, Paperclip, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { ErrorApi } from '@/api/cliente'
 import { chat, notificaciones, pedidos } from '@/api/endpoints'
 import type { Columna, Etiqueta, PedidoDetalle, Tablero, Tarjeta } from '@/api/tipos'
 import { useAuth } from '@/auth/AuthContext'
 import { Avatar } from '@/componentes/Avatar'
 import { Panel } from '@/componentes/Panel'
 import { Personaje } from '@/componentes/personajes/Personaje'
-import { celebrar } from '@/utiles/confeti'
 import { fechaHora, NOMBRE_PRIORIDAD } from '@/utiles/formato'
 import { PestanaArchivos } from './PestanaArchivos'
 import { PestanaChat } from './PestanaChat'
@@ -58,25 +56,6 @@ function Contenido({ pedidoId, alCerrar, columnas, etiquetas }: Props & { pedido
     notificaciones.leer({ pedido_id: pedidoId }).then(() => qc.invalidateQueries({ queryKey: ['notificaciones'] }))
   }, [pedidoId, qc])
 
-  // Optimista: el paso cambia al instante y si el servidor dice que no, se devuelve.
-  const mover = useMutation({
-    mutationFn: (columnaId: number) => pedidos.mover(pedidoId, columnaId, 0),
-    onMutate: async (columnaId) => {
-      await qc.cancelQueries({ queryKey: ['pedido', pedidoId] })
-      const antes = qc.getQueryData<PedidoDetalle>(['pedido', pedidoId])
-      if (antes) qc.setQueryData(['pedido', pedidoId], { ...antes, columna_id: columnaId })
-      if (columnas.find((c) => c.id === columnaId)?.es_final) celebrar()
-      return { antes }
-    },
-    // solo su pedazo (columna): pisar el pedido entero borraria cambios de checklist o responsables en camino
-    onSuccess: (p) => qc.setQueryData<PedidoDetalle>(['pedido', pedidoId], (actual) => actual && { ...actual, columna_id: p.columna_id, posicion: p.posicion, completado_en: p.completado_en }),
-    onError: (e, _columna, ctx) => {
-      if (ctx?.antes) qc.setQueryData(['pedido', pedidoId], ctx.antes)
-      toast.error(e instanceof ErrorApi ? e.message : 'No se pudo mover')
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['tablero'] }),
-  })
-
   const seguir = useMutation({
     mutationFn: () => pedidos.seguir(pedidoId),
     onSuccess: (r) => {
@@ -122,6 +101,11 @@ function Contenido({ pedidoId, alCerrar, columnas, etiquetas }: Props & { pedido
       <header className="detalle__cabeza">
         <div className="detalle__fila-sup">
           <span className="chip mono">{pedido.codigo}</span>
+          {columna && (
+            <span className="chip detalle__columna" style={{ '--c': columna.color } as React.CSSProperties} title="Columna donde va el pedido">
+              <span className="punto" style={{ background: 'var(--c)' }} />{columna.nombre}
+            </span>
+          )}
           <span className="chip">{pedido.mercado}</span>
           {pedido.tipo_vidrio === '3d' && <span className="chip detalle__3d">3D</span>}
           {pedido.prioridad !== 'media' && (
@@ -156,28 +140,6 @@ function Contenido({ pedidoId, alCerrar, columnas, etiquetas }: Props & { pedido
           <Avatar usuario={pedido.creado_por} tamano={22} />
           <span>Creado por <b>{pedido.creado_por.nombre}</b> · {fechaHora(pedido.creado_en)}</span>
         </div>
-
-        {/* camino de columnas: se ve en que paso va y (si puede) se mueve con un clic */}
-        <ol className="detalle__camino">
-          {columnas.map((c, i) => {
-            const actual = c.id === pedido.columna_id
-            const pasada = columnas.findIndex((x) => x.id === pedido.columna_id) > i
-            return (
-              <li key={c.id}>
-                <button
-                  className={`detalle__paso ${actual ? 'actual' : ''} ${pasada ? 'pasada' : ''}`}
-                  style={{ '--c': c.color } as React.CSSProperties}
-                  disabled={!puede('tarjeta.mover') || actual}
-                  onClick={() => mover.mutate(c.id)}
-                  title={puede('tarjeta.mover') ? `Mover a ${c.nombre}` : c.nombre}
-                >
-                  {actual && <motion.span layoutId="paso-actual" className="detalle__paso-fondo" />}
-                  <span className="detalle__paso-texto">{c.nombre}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ol>
 
         <nav className="detalle__pestanas" role="tablist">
           {pestanas.map(({ id, texto, icono: Icono, cuenta }) => (

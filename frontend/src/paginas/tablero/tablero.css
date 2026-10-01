@@ -348,3 +348,34 @@
 }
 .tarjeta__chip--3d { color: var(--agp-carbon-oscuro); background: var(--agp-cielo); }
 .tarjeta__anio:empty { display: none; }
+
+/* Ajustar: todas las columnas se reparten el ancho disponible (sin scroll si caben) */
+.tablero__columnas--ajustar .columna { flex: 1 1 0; min-width: 220px; }
+.tablero__columnas--ajustar .tarjeta__portada { height: 96px; }
+
+.tablero__vista {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin-left: auto;
+  border-radius: 12px;
+  background: var(--campo);
+  border: 1px solid var(--borde);
+}
+.tablero__vista button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto-3);
+  transition: all var(--rapido);
+}
+.tablero__vista button:hover { color: var(--texto); }
+.tablero__vista button.activo { color: var(--texto); background: color-mix(in srgb, var(--primario) 18%, transparent); }
+@media (max-width: 900px) { .tablero__vista { display: none; } }

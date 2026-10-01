@@ -1,0 +1,83 @@
+.visor {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 10, 12, 0.92);
+  backdrop-filter: blur(6px);
+}
+
+.visor__barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  color: #fff;
+}
+.visor__info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.visor__info strong { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.visor__info span { font-size: 12px; color: rgba(255, 255, 255, 0.6); }
+.visor__barra .btn { color: #fff; background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.14); }
+.visor__barra .btn-peligro { color: #ff9aa8; }
+
+.visor__contenido {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 70px 24px;
+}
+.visor__marco { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.visor__imagen {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
+  object-fit: contain;
+}
+.visor__documento {
+  width: min(1100px, 100%);
+  height: 100%;
+  border: none;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
+}
+
+.visor__sin-vista {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 420px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+}
+.visor__sin-vista svg { color: var(--agp-cielo); margin-bottom: 6px; }
+.visor__sin-vista span { font-size: 14px; color: rgba(255, 255, 255, 0.6); }
+.visor__sin-vista .btn { margin-top: 10px; }
+
+.visor__flecha {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background var(--rapido);
+}
+.visor__flecha:hover { background: rgba(255, 255, 255, 0.18); }
+.visor__flecha--izq { left: 14px; }
+.visor__flecha--der { right: 14px; }
+
+@media (max-width: 640px) {
+  .visor__contenido { padding: 0 10px 16px; }
+  .visor__flecha { top: auto; bottom: 18px; transform: none; }
+}

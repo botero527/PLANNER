@@ -5,7 +5,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CalendarClock, Flame, PackagePlus, PartyPopper, Search, UserRound, X } from 'lucide-react'
+import { AlertTriangle, CalendarClock, Columns3, Flame, GalleryHorizontal, PackagePlus, PartyPopper, Search, UserRound, X } from 'lucide-react'
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -17,6 +17,7 @@ import { Personaje } from '@/componentes/personajes/Personaje'
 import { TituloBarra } from '@/componentes/TituloBarra'
 import { celebrar } from '@/utiles/confeti'
 import { diasPara, NOMBRE_PRIORIDAD } from '@/utiles/formato'
+import { usePreferencia } from '@/utiles/preferencias'
 import { DetallePedido } from '../pedido/DetallePedido'
 import { ColumnaTablero } from './ColumnaTablero'
 import { TarjetaPedido } from './TarjetaPedido'
@@ -38,6 +39,8 @@ export default function Tablero() {
   const [soloMios, setSoloMios] = useState(false)
   const [prioridades, setPrioridades] = useState<Set<Prioridad>>(new Set())
   const [etiqueta, setEtiqueta] = useState<number | null>(null)
+  // 'ajustar' = las columnas se reparten la pantalla; 'amplio' = ancho fijo con scroll
+  const [vista, setVista] = usePreferencia<'ajustar' | 'amplio'>('tablero-vista', 'ajustar')
 
   // orden local: solo existe mientras se arrastra o mientras el servidor confirma
   const [ordenLocal, setOrdenLocal] = useState<Orden | null>(null)
@@ -196,6 +199,14 @@ export default function Tablero() {
           {puede('pedido.crear') && (
             <Link to="/nuevo" className="btn btn-primario"><PackagePlus size={17} /> Nuevo pedido</Link>
           )}
+          <div className="tablero__vista" role="group" aria-label="Cómo ver las columnas">
+            <button className={vista === 'ajustar' ? 'activo' : ''} onClick={() => setVista('ajustar')} title="Ajustar a la pantalla (todas las columnas a la vista)">
+              <Columns3 size={16} /> Ajustar
+            </button>
+            <button className={vista === 'amplio' ? 'activo' : ''} onClick={() => setVista('amplio')} title="Columnas anchas (con scroll de lado)">
+              <GalleryHorizontal size={16} /> Amplio
+            </button>
+          </div>
         </div>
       </TituloBarra>
 
@@ -245,7 +256,7 @@ export default function Tablero() {
         onDragEnd={alSoltar}
         onDragCancel={() => { setArrastrada(null); setColumnaEncima(null); setOrdenLocal(null) }}
       >
-        <div className="tablero__columnas">
+        <div className={`tablero__columnas tablero__columnas--${vista}`}>
           {data.columnas.map((c) => (
             <ColumnaTablero
               key={c.id}

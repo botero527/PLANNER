@@ -7,10 +7,11 @@ import { ErrorApi } from '@/api/cliente'
 import { adjuntos, chat, usuarios } from '@/api/endpoints'
 import { useEvento, useTiempoReal } from '@/api/tiempoReal'
 import { refrescarPronto, reemplazarMensaje, sumarMensajes, type MensajeLocal } from '@/api/cacheLocal'
-import type { Mensaje, PedidoDetalle, UsuarioMini } from '@/api/tipos'
+import type { Adjunto, Mensaje, PedidoDetalle, UsuarioMini } from '@/api/tipos'
 import { useAuth } from '@/auth/AuthContext'
 import { Avatar } from '@/componentes/Avatar'
 import { Personaje } from '@/componentes/personajes/Personaje'
+import { VisorArchivo } from '@/componentes/VisorArchivo'
 import { hora, primerNombre, tamanoArchivo } from '@/utiles/formato'
 
 // mensajes seguidos del mismo autor en menos de 5 min se agrupan (como Teams)
@@ -38,6 +39,9 @@ export function PestanaChat({ pedido }: { pedido: PedidoDetalle }) {
   const { data: mensajes = [], isLoading } = useQuery({ queryKey: ['mensajes', pedido.id], queryFn: () => chat.mensajes(pedido.id) })
   const { data: equipo = [] } = useQuery({ queryKey: ['equipo'], queryFn: usuarios.equipo, staleTime: 300000 })
   const porId = useMemo(() => new Map(mensajes.map((m) => [m.id, m])), [mensajes])
+  // todos los archivos de la conversacion, para pasar entre ellos con las flechas del visor
+  const adjuntosChat = useMemo(() => mensajes.flatMap((m) => (m.eliminado ? [] : m.adjuntos)), [mensajes])
+  const [viendo, setViendo] = useState<number | null>(null)
 
   // bajar al ultimo mensaje cuando llega uno nuevo
   useEffect(() => {
@@ -184,6 +188,7 @@ export function PestanaChat({ pedido }: { pedido: PedidoDetalle }) {
                   alResponder={() => { setRespondiendo(m); setEditando(null) }}
                   alEditar={() => { setEditando(m); setRespondiendo(null); setTexto(m.texto) }}
                   alBorrar={() => window.confirm('¿Borrar este mensaje?') && borrar.mutate(m.id)}
+                  alVer={(a) => setViendo(adjuntosChat.findIndex((x) => x.id === a.id))}
                   puedeBorrarAjeno={puede('usuario.administrar')}
                 />
               </Fragment>
@@ -265,6 +270,7 @@ export function PestanaChat({ pedido }: { pedido: PedidoDetalle }) {
           </div>
         </form>
       )}
+      <VisorArchivo archivos={adjuntosChat} indice={viendo} alCambiar={setViendo} />
     </div>
   )
 }
@@ -277,10 +283,11 @@ interface PropsBurbuja {
   alResponder: () => void
   alEditar: () => void
   alBorrar: () => void
+  alVer: (a: Adjunto) => void
   puedeBorrarAjeno: boolean
 }
 
-function Burbuja({ mensaje: m, mio, agrupado, original, alResponder, alEditar, alBorrar, puedeBorrarAjeno }: PropsBurbuja) {
+function Burbuja({ mensaje: m, mio, agrupado, original, alResponder, alEditar, alBorrar, alVer, puedeBorrarAjeno }: PropsBurbuja) {
   return (
     <motion.div
       className={`msj ${mio ? 'msj--mio' : ''} ${agrupado ? 'msj--agrupado' : ''} ${(m as MensajeLocal).pendiente ? 'msj--pendiente' : ''}`}
@@ -308,9 +315,9 @@ function Burbuja({ mensaje: m, mio, agrupado, original, alResponder, alEditar, a
           {m.adjuntos.length > 0 && (
             <div className="msj__adjuntos">
               {m.adjuntos.map((a) => a.es_imagen ? (
-                <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="msj__imagen"><img src={a.url} alt={a.nombre} loading="lazy" /></a>
+                <button key={a.id} type="button" onClick={() => alVer(a)} className="msj__imagen"><img src={a.url} alt={a.nombre} loading="lazy" /></button>
               ) : (
-                <a key={a.id} href={a.url_descarga} className="msj__archivo"><FileText size={16} /> {a.nombre} <small>{tamanoArchivo(a.tamano_bytes)}</small></a>
+                <button key={a.id} type="button" onClick={() => alVer(a)} className="msj__archivo"><FileText size={16} /> {a.nombre} <small>{tamanoArchivo(a.tamano_bytes)}</small></button>
               ))}
             </div>
           )}

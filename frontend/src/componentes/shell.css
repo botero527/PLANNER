@@ -2,6 +2,7 @@
   display: grid;
   grid-template-columns: 248px 1fr;
   height: 100dvh;
+  transition: grid-template-columns var(--normal) var(--suave);
   gap: 14px;
   padding: 14px;
 }
@@ -182,8 +183,22 @@
 .aviso-vivo strong { font-size: 13px; }
 .aviso-vivo p { margin: 2px 0 0; font-size: 13px; color: var(--texto-2); }
 
+.shell__marca { justify-content: space-between; align-items: center; }
+.shell__colapsar { color: var(--texto-3); }
+
+/* menu compacto: solo iconos, para darle todo el ancho al tablero */
+.shell--compacto { grid-template-columns: 76px 1fr; }
+.shell--compacto .shell__menu { padding-left: 10px; padding-right: 10px; }
+.shell--compacto .shell__marca { flex-direction: column; gap: 10px; padding: 0 0 18px; }
+.shell--compacto .shell__enlace { justify-content: center; padding: 0; }
+.shell--compacto .shell__enlace > span:not(.shell__enlace-fondo),
+.shell--compacto .shell__mascota,
+.shell--compacto .shell__yo-texto { display: none; }
+.shell--compacto .shell__yo { flex-direction: column; padding: 8px 4px; }
+
 @media (max-width: 900px) {
-  .shell { grid-template-columns: 1fr; grid-template-rows: 1fr auto; padding: 10px; }
+  .shell__colapsar { display: none; }
+  .shell, .shell--compacto { grid-template-columns: 1fr; grid-template-rows: 1fr auto; padding: 10px; }
   .shell__menu {
     order: 2;
     flex-direction: row;
